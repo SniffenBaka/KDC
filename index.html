@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>School Media</title>
 
-  <!-- Font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -14,12 +13,10 @@
 </head>
 <body>
 
-  <!-- VIDEO BACKGROUND -->
+  <!-- BACKGROUND -->
   <video class="bg-video" autoplay muted loop playsinline>
     <source src="assets/video/bg.webm" type="video/webm">
   </video>
-
-  <!-- AMBIENT GLOW -->
   <div class="ambient-glow glow-1"></div>
   <div class="ambient-glow glow-2"></div>
 
@@ -34,8 +31,9 @@
     </ul>
   </nav>
 
-  <!-- HERO -->
   <main class="container">
+
+    <!-- HERO -->
     <section class="hero fade-in">
       <h1>Trang truyền thông học đường</h1>
       <p>Nội dung chọn lọc · Trình bày hiện đại · Trải nghiệm mượt</p>
@@ -51,6 +49,35 @@
         </div>
       </div>
     </section>
+
+    <!-- POSTS GRID -->
+    <section class="posts fade-in">
+      <h2 class="section-title">Bài viết nổi bật</h2>
+
+      <div class="post-grid">
+        <a href="post.html" class="post-card glass lift">
+          <span class="post-tag">Tin trường</span>
+          <h3>Hoạt động ngoại khóa nổi bật trong tháng</h3>
+          <p>Tổng hợp những hoạt động tiêu biểu giúp học sinh phát triển kỹ năng.</p>
+          <span class="post-meta">5 phút đọc</span>
+        </a>
+
+        <a href="post.html" class="post-card glass lift">
+          <span class="post-tag">Kỹ năng</span>
+          <h3>5 cách học hiệu quả cho học sinh lớp 11</h3>
+          <p>Những phương pháp học tập thực tế, dễ áp dụng.</p>
+          <span class="post-meta">4 phút đọc</span>
+        </a>
+
+        <a href="post.html" class="post-card glass lift">
+          <span class="post-tag">Truyền cảm hứng</span>
+          <h3>Câu chuyện vượt khó của một học sinh tiêu biểu</h3>
+          <p>Khi nỗ lực bền bỉ tạo nên kết quả xứng đáng.</p>
+          <span class="post-meta">6 phút đọc</span>
+        </a>
+      </div>
+    </section>
+
   </main>
 
   <script src="js/main.js"></script>
