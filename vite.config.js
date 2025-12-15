@@ -3,5 +3,5 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/KDC/', // ⚠️ BẮT BUỘC
+  base: '/KDC/',   // ⚠️ đúng tên repo
 })
