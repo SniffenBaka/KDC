@@ -69,6 +69,145 @@ const GLOBAL_STYLES = `
   .page-transition-enter {
     animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
+
+
+  /* Sticky header offset for anchor scrolling */
+  #video-section, #articles-section { scroll-margin-top: 96px; }
+
+  /* Ambient background (luxury breathe + hue cycle) */
+  :root { --ambient-intensity: 1; }
+
+  @keyframes luxeHue {
+    0% { filter: hue-rotate(0deg) saturate(1.12) brightness(1); }
+    50% { filter: hue-rotate(35deg) saturate(1.22) brightness(1.05); }
+    100% { filter: hue-rotate(70deg) saturate(1.15) brightness(1); }
+  }
+  @keyframes luxeBreathA {
+    0% { transform: translate3d(0,0,0) scale(1); opacity: 0.34; }
+    50% { transform: translate3d(0,-1.6%,0) scale(1.08); opacity: 0.55; }
+    100% { transform: translate3d(0,0,0) scale(1.02); opacity: 0.40; }
+  }
+  @keyframes luxeBreathB {
+    0% { transform: translate3d(0,0,0) scale(1); opacity: 0.28; }
+    50% { transform: translate3d(0,1.4%,0) scale(1.12); opacity: 0.48; }
+    100% { transform: translate3d(0,0,0) scale(1.04); opacity: 0.32; }
+  }
+
+  .ambient-root { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+  .ambient-hue { position: absolute; inset: -12%; animation: luxeHue 16s ease-in-out infinite alternate; }
+  .ambient-noise { position: absolute; inset: 0; opacity: 0.04; background: url("https://grainy-gradients.vercel.app/noise.svg"); }
+  .ambient-blob {
+    position: absolute;
+    width: 90vw;
+    height: 90vw;
+    filter: blur(110px);
+    will-change: transform, opacity, filter;
+    mix-blend-mode: screen;
+    opacity: calc(0.55 * var(--ambient-intensity));
+  }
+  .ambient-blob.a {
+    top: -20%;
+    right: -18%;
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.55), transparent 62%);
+    animation: luxeBreathA 10.5s cubic-bezier(0.16,1,0.3,1) infinite;
+  }
+  .ambient-blob.b {
+    bottom: -22%;
+    left: -18%;
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.45), transparent 62%);
+    animation: luxeBreathB 12s cubic-bezier(0.16,1,0.3,1) infinite;
+  }
+  .ambient-blob.c {
+    top: 35%;
+    left: 55%;
+    width: 65vw;
+    height: 65vw;
+    background: radial-gradient(circle, rgba(236, 72, 153, 0.22), transparent 65%);
+    animation: luxeBreathA 14s cubic-bezier(0.16,1,0.3,1) infinite;
+  }
+  .ambient-vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 30%, transparent 0%, rgba(0,0,0,0.55) 68%, rgba(0,0,0,0.85) 100%);
+    opacity: 0.9;
+  }
+
+  /* Ambient controls (intensity slider) */
+  .ambient-controls { padding: 12px 14px 14px; border-top: 1px solid rgba(255,255,255,0.08); }
+  .ambient-label { display:flex; justify-content: space-between; align-items:center; font-size: 12px; color:#a1a1aa; margin-bottom: 10px; }
+  .ambient-range { width: 100%; }
+  .ambient-range input[type="range"] { width: 100%; }
+
+  /* Responsive helpers (no Tailwind dependency) */
+  .nav-links { display: flex; }
+  .mobile-nav-toggle { display: none; }
+  .mobile-menu-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+    z-index: 10001;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    padding: 12px;
+  }
+  .mobile-menu-panel {
+    width: min(360px, 92vw);
+    background: rgba(15, 15, 20, 0.98);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+    overflow: hidden;
+    animation: fadeIn 0.18s ease-out;
+  }
+  .mobile-menu-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .mobile-menu-list { display: flex; flex-direction: column; padding: 10px; gap: 8px; }
+  .mobile-menu-item {
+    width: 100%;
+    text-align: left;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: #e5e7eb;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .mobile-menu-item.is-active {
+    border-color: rgba(167, 139, 250, 0.45);
+    box-shadow: 0 0 0 1px rgba(167, 139, 250, 0.15) inset;
+    color: #d8b4fe;
+  }
+
+
+  .btn-label { display: inline; }
+  @media (max-width: 560px) {
+    .btn-label { display: none !important; }
+  }
+
+  @media (max-width: 768px) {
+    ::-webkit-scrollbar { width: 0px; }
+    .nav-links { display: none !important; }
+    .mobile-nav-toggle { display: inline-flex !important; }
+
+    /* Improve tap targets */
+    button { -webkit-tap-highlight-color: transparent; }
+
+    /* Prevent sticky header from pushing content weirdly on small screens */
+    body { overscroll-behavior-y: none; }
+  }
+
+  @media (max-width: 420px) {
+    .mobile-menu-panel { width: 94vw; }
+  }
 `;
 
 // --- 2. INITIAL DATA ---
@@ -154,7 +293,7 @@ const FadeInSection = ({ children, delay = 0, className = "" }) => {
 
 const NotificationDropdown = ({ notifications, onClose, onMarkAllRead }) => {
   return (
-    <div style={{ position: 'absolute', top: 'calc(100% + 15px)', right: '0', width: '340px', background: 'rgba(15, 15, 20, 0.98)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', boxShadow: '0 20px 50px rgba(0,0,0,0.8)', zIndex: 9999, padding: '8px', animation: 'fadeIn 0.2s ease-out', transformOrigin: 'top right' }}>
+    <div style={{ position: 'absolute', top: 'calc(100% + 15px)', right: '0', width: 'min(340px, calc(100vw - 24px))', background: 'rgba(15, 15, 20, 0.98)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', boxShadow: '0 20px 50px rgba(0,0,0,0.8)', zIndex: 9999, padding: '8px', animation: 'fadeIn 0.2s ease-out', transformOrigin: 'top right' }}>
        <div style={{ position: 'absolute', top: '-6px', right: '20px', width: '12px', height: '12px', background: 'rgba(15, 15, 20, 0.98)', borderLeft: '1px solid rgba(255, 255, 255, 0.1)', borderTop: '1px solid rgba(255, 255, 255, 0.1)', transform: 'rotate(45deg)', zIndex: 1 }} />
       <div style={{ padding: '16px', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 2 }}>
         <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#f9fafb' }}>Thông báo</h3>
@@ -185,7 +324,7 @@ const CommentSection = ({ comments = [], onAddComment }) => {
   return (
     <div style={{ marginTop: '40px' }}>
       <h3 style={{ fontSize: '20px', fontWeight: '600', color: '#f9fafb', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}><MessageSquare size={20} color="#a78bfa" /> Bình luận ({comments.length})</h3>
-      <div style={{ display: 'flex', gap: '16px', marginBottom: '32px', padding: '20px', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '20px', border: `1px solid ${isFocused ? 'rgba(139, 92, 246, 0.4)' : 'rgba(255, 255, 255, 0.05)'}`, transition: 'all 0.3s ease', boxShadow: isFocused ? '0 0 20px rgba(139, 92, 246, 0.1)' : 'none' }}>
+      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '32px', padding: '20px', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '20px', border: `1px solid ${isFocused ? 'rgba(139, 92, 246, 0.4)' : 'rgba(255, 255, 255, 0.05)'}`, transition: 'all 0.3s ease', boxShadow: isFocused ? '0 0 20px rgba(139, 92, 246, 0.1)' : 'none' }}>
         <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg, #a78bfa, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', flexShrink: 0 }}>B</div>
         <div style={{ flex: 1, position: 'relative' }}>
           <textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} onFocus={() => setIsFocused(true)} onBlur={() => setIsFocused(false)} placeholder="Chia sẻ suy nghĩ của bạn..." rows={2} style={{ width: '100%', padding: '10px 0', background: 'transparent', border: 'none', color: '#e4e4e7', fontSize: '15px', resize: 'none', outline: 'none', minHeight: '24px' }} />
@@ -202,7 +341,7 @@ const CommentSection = ({ comments = [], onAddComment }) => {
 const SurveySection = () => {
     const handleClick = (type) => { alert(`Cảm ơn bạn đã quan tâm đến mục "${type}". Form khảo sát sẽ được mở trong tab mới!`); }
   return (
-    <div style={{ marginTop: '60px', padding: '40px', background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(6, 182, 212, 0.05))', borderRadius: '24px', border: '1px solid rgba(139, 92, 246, 0.2)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+    <div style={{ marginTop: '60px', padding: 'clamp(18px, 4vw, 40px)', background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(6, 182, 212, 0.05))', borderRadius: '24px', border: '1px solid rgba(139, 92, 246, 0.2)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'relative', zIndex: 2 }}>
         <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#f9fafb', marginBottom: '12px' }}>Ý kiến của bạn rất quan trọng!</h3>
         <p style={{ color: '#a1a1aa', fontSize: '15px', marginBottom: '24px', maxWidth: '600px', margin: '0 auto 32px', lineHeight: '1.6' }}>Hãy giúp KDC Education cải thiện chất lượng nội dung bằng cách dành 1 phút để làm khảo sát nhỏ này hoặc gửi góp ý trực tiếp cho chúng tôi.</p>
@@ -382,7 +521,7 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
   const relatedArticles = allArticles.filter(a => a.id !== article.id).slice(0, 2);
 
   return (
-    <div className="page-transition-enter" style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 24px 80px', position: 'relative', zIndex: 10 }}>
+    <div className="page-transition-enter" style={{ maxWidth: '1200px', margin: '0 auto', padding: 'clamp(20px, 4vw, 40px) clamp(16px, 3vw, 24px) 80px', position: 'relative', zIndex: 10 }}>
       <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', padding: '10px 20px', borderRadius: '30px', color: '#e5e7eb', cursor: 'pointer', marginBottom: '32px', transition: 'all 0.3s ease', fontSize: '14px', fontWeight: '500', backdropFilter: 'blur(10px)' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'; e.currentTarget.style.transform = 'translateX(-4px)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'; e.currentTarget.style.transform = 'translateX(0)'; }}>
         <ArrowLeft size={18} /> Quay lại trang chủ
       </button>
@@ -390,7 +529,7 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
       <FadeInSection>
         <div style={{ marginBottom: '32px' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(168, 85, 247, 0.15)', color: '#d8b4fe', padding: '6px 16px', borderRadius: '20px', fontSize: '14px', fontWeight: '600', marginBottom: '16px', border: '1px solid rgba(168, 85, 247, 0.3)' }}>{getCategoryIcon(article.category)} {article.category}</div>
-          <h1 style={{ fontSize: '40px', fontWeight: '700', color: '#ffffff', lineHeight: '1.4', marginBottom: '24px' }}>{article.title}</h1>
+          <h1 style={{ fontSize: 'clamp(28px, 6vw, 40px)', fontWeight: '700', color: '#ffffff', lineHeight: '1.25', marginBottom: '18px' }}>{article.title}</h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: '24px', color: '#9ca3af', fontSize: '14px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><User size={16} color="#a78bfa" /><span style={{ color: '#e5e7eb', fontWeight: '500' }}>{article.author}</span></div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Calendar size={16} color="#a78bfa" /><span>{article.date}</span></div>
@@ -401,12 +540,12 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
 
         <div style={{ marginBottom: '40px' }}>
           {article.image && (
-            <div style={{ width: '100%', height: '500px', borderRadius: '24px', overflow: 'hidden', marginBottom: '20px', boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+            <div style={{ width: '100%', height: 'clamp(240px, 45vw, 500px)', borderRadius: '24px', overflow: 'hidden', marginBottom: '20px', boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
               <img src={article.image} alt={article.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
           )}
           
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px', backdropFilter: 'blur(10px)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', padding: '16px 20px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px', backdropFilter: 'blur(10px)' }}>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
               <span style={{ fontSize: '14px', color: '#9ca3af', marginRight: '8px', fontWeight: '500' }}>Chia sẻ:</span>
               <ShareButton icon={<FacebookIcon />} color="#1877F2" onClick={() => {}} />
@@ -427,7 +566,7 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
           </div>
         </div>
 
-        <div style={{ fontSize: '18px', lineHeight: '1.6', color: '#e2e8f0', background: 'rgba(17, 24, 39, 0.4)', backdropFilter: 'blur(12px)', padding: '40px', borderRadius: '24px', border: '1px solid rgba(255, 255, 255, 0.05)', boxShadow: '0 4px 20px rgba(0,0,0,0.2)', marginBottom: '60px' }}>
+        <div style={{ fontSize: '18px', lineHeight: '1.6', color: '#e2e8f0', background: 'rgba(17, 24, 39, 0.4)', backdropFilter: 'blur(12px)', padding: '40px', borderRadius: '24px', border: '1px solid rgba(255, 255, 255, 0.05)', boxShadow: '0 4px 20px rgba(0,0,0,0.2)', marginBottom: 'clamp(32px, 6vw, 56px)' }}>
           <p style={{ marginBottom: '24px', fontSize: '20px', fontWeight: '500', color: '#fff' }}>{article.excerpt}</p>
           {article.content ? (<div dangerouslySetInnerHTML={{ __html: article.content }} />) : (<><p style={{ marginBottom: '20px' }}>Nội dung chi tiết của bài viết...</p></>)}
           {article.sources && article.sources.length > 0 && (
@@ -544,10 +683,10 @@ const VideoShowcase = () => {
       {/* GLOW LAYER - FIX: Larger size, no overflow hidden, forced GPU, and micro-animation */}
       <div style={{
         position: 'absolute',
-        top: '-3%', // Extended top
-        left: '-2%', // Extended left
-        width: '102%', // Larger than container
-        height: '112%', // Larger than container
+        top: '1%', // Extended top
+        left: '2%', // Extended left
+        width: '95%', // Larger than container
+        height: '103%', // Larger than container
         zIndex: -1,
         opacity: 0.9,
         // The magic sauce: translate3d forces GPU, scale makes it big, blur makes it glow
@@ -719,7 +858,10 @@ const App = () => {
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [activeNav, setActiveNav] = useState('Trang chủ');
   const [selectedArticle, setSelectedArticle] = useState(null);
+  const [pendingScrollTarget, setPendingScrollTarget] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
+  const [ambientIntensity, setAmbientIntensity] = useState(1);
   // Hover States
   const [hoveredNav, setHoveredNav] = useState(null);
   const [hoveredCat, setHoveredCat] = useState(null);
@@ -770,11 +912,39 @@ const App = () => {
 
   const handleNavClick = (item) => {
     setActiveNav(item);
-    if (selectedArticle) setSelectedArticle(null);
+
+    // If đang xem bài viết, cần "đóng" detail trước rồi mới scroll (DOM section chưa tồn tại ở thời điểm click).
+    if (selectedArticle) {
+      setSelectedArticle(null);
+
+      if (item === 'Trang chủ') setPendingScrollTarget('top');
+      else if (item === 'Video') setPendingScrollTarget('video');
+      else if (item === 'Tin tức') setPendingScrollTarget('articles');
+
+      return;
+    }
+
     if (item === 'Trang chủ') window.scrollTo({ top: 0, behavior: 'smooth' });
     else if (item === 'Video') document.getElementById('video-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     else if (item === 'Tin tức') document.getElementById('articles-section')?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  useEffect(() => {
+    if (selectedArticle) return;
+    if (!pendingScrollTarget) return;
+
+    // Chờ render xong rồi mới scroll để tránh null element.
+    const run = () => {
+      if (pendingScrollTarget === 'top') window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (pendingScrollTarget === 'video') document.getElementById('video-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (pendingScrollTarget === 'articles') document.getElementById('articles-section')?.scrollIntoView({ behavior: 'smooth' });
+      setPendingScrollTarget(null);
+    };
+
+    const t = setTimeout(run, 30);
+    return () => clearTimeout(t);
+  }, [selectedArticle, pendingScrollTarget]);
+
 
   const handleMarkAllRead = () => {
     const updatedNotifications = notifications.map(n => ({ ...n, isRead: true }));
@@ -806,39 +976,48 @@ const App = () => {
   return (
     <div style={{ minHeight: '100vh', background: '#050505', color: '#f9fafb', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', position: 'relative', overflowX: 'hidden' }}>
       <style>{GLOBAL_STYLES}</style> {/* Corrected variable name */}
-      
-      {/* Background Effects - Parallax & Glow */}
-      <div style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-        {/* Lớp nền noise nhẹ */}
-        <div style={{ position: 'absolute', inset: 0, opacity: 0.05, background: 'url("https://grainy-gradients.vercel.app/noise.svg")' }} />
 
-        {/* Blob 1: Tím (Purple) */}
-        <div style={{
-          position: 'absolute', top: '-15%', right: '-10%', width: '80vw', height: '80vw',
-          background: 'radial-gradient(circle, rgba(139, 92, 246, 0.4), transparent 60%)', 
-          filter: 'blur(100px)',
-          transform: `translateY(${scrollY * 0.1}px)`, // Parallax effect
-          transition: 'transform 0.1s ease-out'
-        }} />
-
-        {/* Blob 2: Xanh (Cyan/Blue) */}
-        <div style={{
-          position: 'absolute', bottom: '-15%', left: '-10%', width: '80vw', height: '80vw',
-          background: 'radial-gradient(circle, rgba(56, 189, 248, 0.3), transparent 60%)',
-          filter: 'blur(100px)',
-          transform: `translateY(-${scrollY * 0.1}px)`, // Reverse parallax
-          transition: 'transform 0.1s ease-out'
-        }} />
+      {/* Ambient Background (luxury, subtle, "breathing") */}
+      <div className="ambient-root" style={{ '--ambient-intensity': String(ambientIntensity) }}>
+        <div className="ambient-hue">
+          <div className="ambient-noise" />
+          <div className="ambient-blob a" style={{ transform: `translateY(${scrollY * 0.06}px)` }} />
+          <div className="ambient-blob b" style={{ transform: `translateY(-${scrollY * 0.05}px)` }} />
+          <div className="ambient-blob c" style={{ transform: `translateY(${scrollY * 0.03}px)` }} />
+          <div className="ambient-vignette" />
+        </div>
       </div>
 
       <nav style={{ position: 'sticky', top: 0, zIndex: 9999, background: 'rgba(10, 10, 10, 0.3)', backdropFilter: 'blur(40px)', borderBottom: '1px solid rgba(167, 139, 250, 0.1)', boxShadow: '0 0 30px rgba(167, 139, 250, 0.05)', opacity: mounted ? 1 : 0, transform: mounted ? 'translateY(0)' : 'translateY(-4px)', transition: 'all 800ms cubic-bezier(0.4, 0, 0.2, 1)', overflow: 'visible' }}>
-        <div style={{ width: '100%', padding: '16px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => { setSelectedArticle(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
-            <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS-ozqHx0k3ZKISo0aAuPiJJ3OH4V4IxZQX3g&s" alt="Logo" style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover' }} />
-            <div style={{ fontSize: '24px', fontWeight: '700', color: '#f9fafb', letterSpacing: '-0.5px' }}>KDC</div>
+        <div style={{ width: '100%', padding: 'clamp(12px, 2.5vw, 16px) clamp(14px, 4vw, 40px)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: 0 }}>
+            <button
+              className="mobile-nav-toggle"
+              onClick={(e) => { e.stopPropagation(); setMobileMenuOpen(true); }}
+              style={{
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.10)',
+                color: '#e5e7eb',
+                cursor: 'pointer',
+                padding: '10px',
+                borderRadius: '12px',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backdropFilter: 'blur(10px)',
+                flexShrink: 0
+              }}
+              aria-label="Open menu"
+            >
+              <Menu size={20} />
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => { setSelectedArticle(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+              <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS-ozqHx0k3ZKISo0aAuPiJJ3OH4V4IxZQX3g&s" alt="Logo" style={{ width: 'clamp(32px, 7vw, 40px)', height: 'clamp(32px, 7vw, 40px)', borderRadius: '10px', objectFit: 'cover', flexShrink: 0 }} />
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#f9fafb', letterSpacing: '-0.5px' }}>KDC</div>
+            </div>
           </div>
           <div style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: '32px' }} className="hidden md:flex">
+            <div className="nav-links" style={{ display: 'flex', gap: '32px' }}>
               {navItems.map((item) => (
                 <button 
                     key={item} 
@@ -869,7 +1048,7 @@ const App = () => {
             </div>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', position: 'relative' }}>
               <button onClick={() => setShowCreatePost(true)} style={{ padding: '8px 16px', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1))', border: '1px solid rgba(139, 92, 246, 0.2)', borderRadius: '8px', color: '#a78bfa', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'all 300ms', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Plus size={16} /> Đăng bài
+                <Plus size={16} /> <span className="btn-label">Đăng bài</span>
               </button>
               
               {/* Search Bar */}
@@ -917,6 +1096,54 @@ const App = () => {
             </div>
           </div>
         </div>
+        {mobileMenuOpen && (
+          <div className="mobile-menu-overlay" onClick={() => setMobileMenuOpen(false)}>
+            <div className="mobile-menu-panel" onClick={(e) => e.stopPropagation()}>
+              <div className="mobile-menu-header">
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#f9fafb' }}>Danh mục</div>
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={{ background: 'transparent', border: 'none', color: '#a1a1aa', cursor: 'pointer', padding: '6px' }}
+                  aria-label="Close menu"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="mobile-menu-list">
+                {navItems.map((item) => (
+                  <button
+                    key={item}
+                    className={`mobile-menu-item ${activeNav === item ? 'is-active' : ''}`}
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      handleNavClick(item);
+                    }}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+              <div className="ambient-controls">
+                <div className="ambient-label">
+                  <span>Đèn nền</span>
+                  <span>{Math.round(ambientIntensity * 100)}%</span>
+                </div>
+                <div className="ambient-range">
+                  <input
+                    type="range"
+                    min="0.2"
+                    max="1.6"
+                    step="0.05"
+                    value={ambientIntensity}
+                    onChange={(e) => setAmbientIntensity(parseFloat(e.target.value))}
+                    aria-label="Ambient intensity"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
       </nav>
 
       {selectedArticle ? (
@@ -929,11 +1156,11 @@ const App = () => {
         />
       ) : (
         <>
-          <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '100px 24px 60px', position: 'relative', zIndex: 1, opacity: mounted ? 1 : 0, transform: mounted ? 'translateY(0)' : 'translateY(8px)', transition: 'all 900ms 200ms' }}>
+          <div style={{ maxWidth: '1400px', margin: '0 auto', padding: 'clamp(14px, 4vw, 32px) 24px 44px', position: 'relative', zIndex: 1, opacity: mounted ? 1 : 0, transform: mounted ? 'translateY(0)' : 'translateY(8px)', transition: 'all 900ms 200ms' }}>
             {/* WRAP HERO CONTENT IN FADE-IN SECTION */}
             <FadeInSection>
-                <div style={{ textAlign: 'center', marginBottom: '60px' }}>
-                <h1 style={{ fontSize: '72px', fontWeight: '800', marginBottom: '24px', background: 'linear-gradient(135deg, #fff 0%, #e2e8f0 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.03em', lineHeight: '1.4' }}> {/* Fix: lineHeight 1.4 for title */}
+                <div style={{ textAlign: 'center', marginBottom: 'clamp(32px, 6vw, 56px)' }}>
+                <h1 style={{ fontSize: 'clamp(40px, 9vw, 72px)', fontWeight: '800', marginBottom: '24px', background: 'linear-gradient(135deg, #fff 0%, #e2e8f0 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.03em', lineHeight: '1.4' }}> {/* Fix: lineHeight 1.4 for title */}
                     Nơi Chia Sẻ<br />Câu Chuyện Tuổi Trẻ
                 </h1>
                 <p style={{ fontSize: '20px', color: '#cbd5e1', maxWidth: '640px', margin: '0 auto', lineHeight: '1.6' }}>Tin tức, kỹ năng, cảm hứng và những câu chuyện từ chính các bạn học sinh THPT</p>
@@ -977,7 +1204,7 @@ const App = () => {
 
           <div style={{ maxWidth: '1800px', margin: '0 auto', padding: '0 24px 100px', marginTop: '40px', position: 'relative', zIndex: 1 }}>
             {filteredArticles.length > 0 ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '40px', alignItems: 'stretch' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(360px, 100%), 1fr))', gap: '40px', alignItems: 'stretch' }}>
                 {filteredArticles.map((article, i) => (
                     // WRAP EACH ITEM IN FADE-IN SECTION WITH DELAY
                   <FadeInSection key={`${article.id}-${selectedCategory}`} delay={i * 100} className="stagger-item">
