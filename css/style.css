@@ -1,0 +1,256 @@
+/* =========================
+   RESET & BASE
+   ========================= */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #0b0d10;
+  color: #e5e7eb;
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+/* =========================
+   VIDEO BACKGROUND
+   ========================= */
+.bg-video {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.1;
+  z-index: -4;
+  pointer-events: none;
+}
+
+/* =========================
+   AMBIENT GLOW (LED NỀN)
+   ========================= */
+.ambient-glow {
+  position: fixed;
+  width: 600px;
+  height: 600px;
+  filter: blur(120px);
+  opacity: 0.35;
+  z-index: -3;
+  pointer-events: none;
+  animation: glowShift 20s linear infinite;
+}
+
+.glow-1 {
+  top: -200px;
+  left: -200px;
+  background: radial-gradient(circle, #5eead4, transparent 70%);
+}
+
+.glow-2 {
+  bottom: -200px;
+  right: -200px;
+  background: radial-gradient(circle, #8b5cf6, transparent 70%);
+  animation-delay: 10s;
+}
+
+/* =========================
+   GLASS SYSTEM
+   ========================= */
+.glass {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* =========================
+   NAVBAR
+   ========================= */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 40px;
+}
+
+.logo {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.nav-links {
+  display: flex;
+  gap: 24px;
+  list-style: none;
+  font-size: 0.95rem;
+  opacity: 0.85;
+}
+
+.nav-links li {
+  cursor: pointer;
+  transition: opacity 0.3s ease;
+}
+
+.nav-links li:hover {
+  opacity: 1;
+}
+
+/* =========================
+   LAYOUT
+   ========================= */
+.container {
+  padding: 120px 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* =========================
+   HERO SECTION
+   ========================= */
+.hero h1 {
+  font-size: 2.4rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.hero p {
+  margin-top: 12px;
+  max-width: 520px;
+  opacity: 0.75;
+}
+
+/* =========================
+   STATS / INFO CARDS
+   ========================= */
+.stats {
+  display: flex;
+  gap: 24px;
+  margin-top: 40px;
+  flex-wrap: wrap;
+}
+
+.card {
+  padding: 24px 28px;
+  border-radius: 16px;
+  min-width: 160px;
+}
+
+.stat-number {
+  display: block;
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.stat-label {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  opacity: 0.65;
+}
+
+/* =========================
+   INTERACTIONS
+   ========================= */
+.lift {
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+.lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* =========================
+   SCROLL ANIMATION
+   ========================= */
+.fade-in {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+.fade-in.in-view {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* =========================
+   ACCESSIBILITY
+   ========================= */
+.reduce-motion * {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* =========================
+   KEYFRAMES
+   ========================= */
+@keyframes glowShift {
+  0% {
+    filter: blur(120px) hue-rotate(0deg);
+  }
+  100% {
+    filter: blur(120px) hue-rotate(360deg);
+  }
+}
+
+/* =========================
+   RESPONSIVE
+   ========================= */
+@media (max-width: 768px) {
+  .navbar {
+    padding: 14px 20px;
+  }
+
+  .container {
+    padding: 100px 20px;
+  }
+
+  .hero h1 {
+    font-size: 1.9rem;
+  }
+
+  .stats {
+    gap: 16px;
+  }
+}
+
+/* =========================
+   POST PAGE
+   ========================= */
+.post-content {
+  padding: 40px;
+  border-radius: 16px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.post-content h1 {
+  font-size: 2rem;
+  margin-top: 12px;
+  margin-bottom: 16px;
+}
+
+.post-content p {
+  margin-bottom: 16px;
+  opacity: 0.85;
+}
+
+.post-content h3 {
+  margin-top: 32px;
+}
+
+.post-content ul {
+  margin-left: 20px;
+  opacity: 0.7;
+}
