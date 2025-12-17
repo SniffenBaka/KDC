@@ -606,7 +606,7 @@ const VideoShowcase = () => {
   const [progress, setProgress] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
-  const videoUrl = "https://ia801704.us.archive.org/6/items/thpt-tam-phu-20-nam-mot-chang-duong/THPT%20Tam%20Ph%C3%BA%20-%2020%20n%C4%83m%20m%E1%BB%99t%20ch%E1%BA%B7ng%20%C4%91%C6%B0%E1%BB%9Dng.mp4";
+  const videoUrl = "https://github.com/SniffenBaka/KDC/releases/download/v1/THPT_Tam_Phu_20_Nam.mp4";
 
   const handleTimeUpdate = () => {
     if (videoRef.current) {
