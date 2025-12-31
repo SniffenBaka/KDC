@@ -4,7 +4,7 @@ import {
   Upload, Calendar, Volume2, VolumeX, School, BookOpen, Film, 
   Lightbulb, ArrowLeft, Clock, User, Link as LinkIcon, Check, 
   MessageSquare, Image as ImageIcon, Send, MessageCircle, FileText, 
-  ThumbsUp, ThumbsDown 
+  ThumbsUp, ThumbsDown, Loader2, VideoOff
 } from 'lucide-react';
 
 // --- 1. GLOBAL CONSTANTS & STYLES ---
@@ -28,6 +28,8 @@ const GLOBAL_STYLES = `
   ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
   
   /* Animations */
+  @keyframes spin { 100% { transform: rotate(360deg); } }
+
   @keyframes ambientCycle { 
     0% { transform: scale(1); opacity: 0.5; } 
     50% { transform: scale(1.2); opacity: 0.7; } 
@@ -608,6 +610,10 @@ const VideoShowcase = () => {
   const [isHovered, setIsHovered] = useState(false);
   const videoUrl = "https://github.com/SniffenBaka/KDC/releases/download/v1/THPT_Tam_Phu_20_Nam.mp4";
 
+  // --- NEW LOADING STATE ---
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+
   const handleTimeUpdate = () => {
     if (videoRef.current) {
       const current = videoRef.current.currentTime;
@@ -619,6 +625,15 @@ const VideoShowcase = () => {
   };
 
   const toggleMute = () => setIsMuted(!isMuted);
+
+  // --- NEW VIDEO HANDLERS ---
+  const handleLoadStart = () => setIsLoading(true);
+  const handleCanPlay = () => setIsLoading(false);
+  const handleWaiting = () => setIsLoading(true); // Khi mạng yếu, video buffer
+  const handleError = () => {
+    setIsLoading(false);
+    setHasError(true);
+  };
 
   // Safe Play Logic
   useEffect(() => {
@@ -712,22 +727,65 @@ const VideoShowcase = () => {
         position: 'relative',
         borderRadius: '20px',
         overflow: 'hidden',
-        background: '#000',
+        background: '#000', // Black background for loading state
         border: '1px solid rgba(255, 255, 255, 0.1)',
         boxShadow: isHovered ? '0 10px 30px rgba(0,0,0,0.5)' : '0 5px 15px rgba(0,0,0,0.3)',
         transition: 'transform 0.5s ease',
         transform: isHovered ? 'scale(1.01)' : 'scale(1)',
         aspectRatio: '16/9'
       }}>
-        <video ref={videoRef} src={videoUrl} onTimeUpdate={handleTimeUpdate} autoPlay loop muted={isMuted} playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 900 600'%3E%3Crect width='900' height='600' fill='%230e1116'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='system-ui' font-size='48' fill='%239ca3af'%3EVideo Demo%3C/text%3E%3C/svg%3E" />
-        <button onClick={toggleMute} style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(0, 0, 0, 0.4)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', backdropFilter: 'blur(4px)', transition: 'all 300ms cubic-bezier(0.4, 0, 0.2, 1)', padding: 0, opacity: isHovered ? 1 : 0, transform: isHovered ? 'scale(1)' : 'scale(0.8)', pointerEvents: isHovered ? 'auto' : 'none', zIndex: 10 }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0, 0, 0, 0.6)'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(0, 0, 0, 0.4)'}>
-          {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-        </button>
-        <div style={{ position: 'absolute', bottom: '20px', left: '20px', right: '20px', display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <div style={{ flex: 1, height: '4px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '2px', overflow: 'hidden' }}>
-            <div style={{ height: '100%', background: 'linear-gradient(90deg, #7c3aed 0%, #a78bfa 100%)', width: `${progress}%`, transition: 'width 100ms linear' }} />
+        {/* === LOADING / ERROR OVERLAY === */}
+        {/* Style: Minimalist, centered vector, black background */}
+        {(isLoading || hasError) && (
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: '#000', // Solid black to hide the poster flickering
+            zIndex: 20,
+            transition: 'opacity 0.3s'
+          }}>
+            {hasError ? (
+              <VideoOff size={32} color="#ef4444" style={{ opacity: 0.6 }} />
+            ) : (
+              <Loader2 size={40} color="#a78bfa" style={{ animation: 'spin 1s linear infinite' }} />
+            )}
           </div>
-        </div>
+        )}
+
+        <video 
+          ref={videoRef} 
+          src={videoUrl} 
+          onTimeUpdate={handleTimeUpdate} 
+          // New Event Handlers
+          onLoadStart={handleLoadStart}
+          onWaiting={handleWaiting}
+          onCanPlay={handleCanPlay}
+          onLoadedData={handleCanPlay}
+          onError={handleError}
+          
+          autoPlay 
+          loop 
+          muted={isMuted} 
+          playsInline 
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+        />
+
+        {/* CONTROLS - Only show when video is ready */}
+        {!isLoading && !hasError && (
+          <>
+            <button onClick={toggleMute} style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(0, 0, 0, 0.4)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', backdropFilter: 'blur(4px)', transition: 'all 300ms cubic-bezier(0.4, 0, 0.2, 1)', padding: 0, opacity: isHovered ? 1 : 0, transform: isHovered ? 'scale(1)' : 'scale(0.8)', pointerEvents: isHovered ? 'auto' : 'none', zIndex: 10 }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0, 0, 0, 0.6)'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(0, 0, 0, 0.4)'}>
+              {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+            </button>
+            <div style={{ position: 'absolute', bottom: '20px', left: '20px', right: '20px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <div style={{ flex: 1, height: '4px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '2px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', background: 'linear-gradient(90deg, #7c3aed 0%, #a78bfa 100%)', width: `${progress}%`, transition: 'width 100ms linear' }} />
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

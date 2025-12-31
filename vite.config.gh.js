@@ -3,5 +3,5 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/', // ✅ Vercel luôn là /
+  base: '/KDC/', // ⚠️ TÊN REPO GITHUB
 })
