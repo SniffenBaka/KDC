@@ -3,5 +3,5 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/KDC/', // ⚠️ TÊN REPO GITHUB
+  base: '/eight-ducks/', // ⚠️ TÊN REPO GITHUB
 })

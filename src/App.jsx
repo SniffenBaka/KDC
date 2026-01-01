@@ -4,8 +4,9 @@ import {
   Upload, Calendar, Volume2, VolumeX, School, BookOpen, Film, 
   Lightbulb, ArrowLeft, Clock, User, Link as LinkIcon, Check, 
   MessageSquare, Image as ImageIcon, Send, MessageCircle, FileText, 
-  ThumbsUp, ThumbsDown, Loader2, VideoOff, Trash2, Edit3, Bold, Italic, Underline, List, Type, Link2
+  ThumbsUp, ThumbsDown, Loader2, VideoOff, Trash2, Edit3, Bold, Italic, Underline, List, Type, Link2, Heart
 } from 'lucide-react';
+import LightPillar from './LightPillar';
 
 // --- 1. GLOBAL CONSTANTS & STYLES ---
 const GLOBAL_STYLES = `
@@ -262,7 +263,73 @@ const GLOBAL_STYLES = `
     background: rgba(255,255,255,0.1);
     color: #fff;
   }
+  .rte-btn:active, .rte-btn.is-active {
+    background: rgba(147,51,234,0.15);
+    color: #c084fc;
+    border: 1px solid rgba(147,51,234,0.35);
+  }
+
+  /* Content editable placeholder */
+  .editable[contenteditable]:empty:before {
+    content: attr(data-placeholder);
+    color: #6b7280;
+  }
+
+  /* Article content formatting */
+  .article-content {
+    line-height: 1.7;
+    color: #e2e8f0;
+  }
+  .article-content a {
+    color: #c084fc;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    border-bottom: 1px dashed rgba(192, 132, 252, 0.6);
+    padding-bottom: 1px;
+  }
+  .article-content a.article-link {
+    color: #a855f7;
+    background: rgba(168, 85, 247, 0.12);
+    padding: 1px 4px;
+    border-radius: 6px;
+  }
+  .inline-image-placeholder {
+    color: #c084fc;
+    background: rgba(192, 132, 252, 0.12);
+    padding: 2px 6px;
+    border-radius: 6px;
+    border: 1px dashed rgba(192,132,252,0.5);
+    font-weight: 600;
+  }
+  .article-content a:hover {
+    color: #a855f7;
+    border-bottom-color: rgba(168, 85, 247, 0.9);
+  }
+  .article-content img {
+    max-width: 100%;
+    border-radius: 12px;
+    display: block;
+    margin: 18px auto;
+  }
+  @media (max-width: 640px) {
+    .article-content img {
+      max-width: 90%;
+    }
+  }
 `;
+
+const BRAND = {
+  primary: '#9333EA',
+  primaryHover: '#A855F7',
+  soft: 'rgba(147, 51, 234, 0.14)',
+  border: 'rgba(147, 51, 234, 0.35)',
+  logo: 'https://i.ibb.co/twbnpPDK/d93ab92f-7d17-4f7e-8d6a-a2601020866b.png',
+  storageKey: 'eightDucksUsername',
+  avatarKey: 'eightDucksAvatar'
+};
+
+const PRIMARY_GRADIENT = `linear-gradient(90deg, ${BRAND.primary} 0%, ${BRAND.primaryHover} 100%)`;
 
 // --- 3. ICONS ---
 const FacebookIcon = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047v-2.6c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>);
@@ -272,12 +339,43 @@ const XIcon = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="curre
 // --- 4. HELPERS ---
 const getCategoryIcon = (cat) => {
   switch (cat) {
-    case 'Tin Trường': return <School size={14} />;
-    case 'Học Tập': return <BookOpen size={14} />;
-    case 'Giải Trí': return <Film size={14} />;
-    case 'Kỹ Năng Sống': return <Lightbulb size={14} />;
+    case 'T?nh c?m tu?i h?c tr?': return <Heart size={14} />;
+    case 'Kí ức tươi đẹp của thanh xuân': return <BookOpen size={14} />;
+    case 'Chia s? c?m h?ng': return <Lightbulb size={14} />;
     default: return null;
   }
+};
+
+// Estimate reading time based on text length and media
+const calculateReadingTime = (article = {}) => {
+  const plainText = (article.content || article.excerpt || '').replace(/<[^>]*>/g, ' ');
+  const words = plainText.trim() ? plainText.trim().split(/\s+/).length : 0;
+  const content = article.content || '';
+  const imagesInContent = (content.match(/<img\b[^>]*>/gi) || []).length;
+  const videosInContent = (content.match(/<video\b[^>]*>/gi) || []).length;
+  const mediaCount = imagesInContent + videosInContent + (article.image ? 1 : 0) + (article.video ? 1 : 0);
+  const extraSeconds = Math.min(mediaCount * 10, 60); // simplified: +10s per image/video, max 60s
+  const totalMinutes = Math.ceil(words / 225 + extraSeconds / 60);
+  return Math.max(totalMinutes, 1);
+};
+
+// Normalize links to always open in new tab with consistent style
+const enhanceLinks = (html = '') => {
+  if (!html) return '';
+  const withTargets = html.replace(/<a\s+([^>]*href=["'][^"']+["'][^>]*)>/gi, (match, attrs) => {
+    // Preserve other attributes but enforce target/rel and a highlight class
+    const hasTarget = /target=/i.test(attrs);
+    const hasRel = /rel=/i.test(attrs);
+    const hasClass = /class=/i.test(attrs);
+    const nextAttrs = [
+      attrs,
+      hasClass ? '' : 'class="article-link"',
+      hasTarget ? '' : 'target="_blank"',
+      hasRel ? '' : 'rel="noopener noreferrer"'
+    ].filter(Boolean).join(' ');
+    return `<a ${nextAttrs}>`;
+  });
+  return withTargets;
 };
 
 // --- 5. SUB-COMPONENTS ---
@@ -312,7 +410,7 @@ const NotificationDropdown = ({ notifications, onClose, onMarkAllRead }) => {
         {notifications.length > 0 ? notifications.map(notif => (
           <div key={notif.id} style={{ padding: '16px', borderBottom: '1px solid rgba(255, 255, 255, 0.03)', background: notif.isRead ? 'transparent' : 'rgba(167, 139, 250, 0.05)', cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'} onMouseLeave={(e) => e.currentTarget.style.background = notif.isRead ? 'transparent' : 'rgba(167, 139, 250, 0.05)'}>
             <p style={{ margin: '0 0 6px 0', fontSize: '14px', color: '#e5e7eb', lineHeight: '1.5' }}>{notif.text}</p>
-            <span style={{ fontSize: '12px', color: '#8b5cf6' }}>{notif.time}</span>
+            <span style={{ fontSize: '12px', color: BRAND.primary }}>{notif.time}</span>
           </div>
         )) : (
           <div style={{ padding: '20px', textAlign: 'center', color: '#6b7280', fontSize: '13px' }}>Không có thông báo mới</div>
@@ -336,10 +434,10 @@ const CommentSection = ({ comments = [], onAddComment, isAdmin, onDeleteComment 
     <div style={{ marginTop: '40px' }}>
       <h3 style={{ fontSize: '20px', fontWeight: '600', color: '#f9fafb', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}><MessageSquare size={20} color="#a78bfa" /> Bình luận ({comments.length})</h3>
       <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '32px', padding: '20px', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '20px', border: `1px solid ${isFocused ? 'rgba(139, 92, 246, 0.4)' : 'rgba(255, 255, 255, 0.05)'}`, transition: 'all 0.3s ease', boxShadow: isFocused ? '0 0 20px rgba(139, 92, 246, 0.1)' : 'none' }}>
-        <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg, #a78bfa, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', flexShrink: 0 }}>B</div>
+        <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: PRIMARY_GRADIENT, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', flexShrink: 0 }}>B</div>
         <div style={{ flex: 1, position: 'relative' }}>
           <textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} onFocus={() => setIsFocused(true)} onBlur={() => setIsFocused(false)} placeholder="Chia sẻ suy nghĩ của bạn..." rows={2} style={{ width: '100%', padding: '10px 0', background: 'transparent', border: 'none', color: '#e4e4e7', fontSize: '15px', resize: 'none', outline: 'none', minHeight: '24px' }} />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}><button onClick={handleSubmit} disabled={!newComment.trim()} style={{ background: newComment.trim() ? '#8b5cf6' : 'rgba(255,255,255,0.1)', color: newComment.trim() ? '#fff' : '#71717a', border: 'none', padding: '8px 20px', borderRadius: '20px', fontSize: '13px', fontWeight: '600', cursor: newComment.trim() ? 'pointer' : 'default', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '6px' }}>Gửi <Send size={14} /></button></div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}><button onClick={handleSubmit} disabled={!newComment.trim()} style={{ background: newComment.trim() ? BRAND.primary : 'rgba(255,255,255,0.1)', color: newComment.trim() ? '#fff' : '#71717a', border: 'none', padding: '8px 20px', borderRadius: '20px', fontSize: '13px', fontWeight: '600', cursor: newComment.trim() ? 'pointer' : 'default', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '6px' }}>Gửi <Send size={14} /></button></div>
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -378,8 +476,8 @@ const SurveySection = () => {
         <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#f9fafb', marginBottom: '12px' }}>Ý kiến của bạn rất quan trọng!</h3>
         <p style={{ color: '#a1a1aa', fontSize: '15px', marginBottom: '24px', maxWidth: '600px', margin: '0 auto 32px', lineHeight: '1.6' }}>Hãy giúp Eight Ducks cải thiện chất lượng nội dung bằng cách dành 1 phút để làm khảo sát nhỏ này hoặc gửi góp ý trực tiếp cho chúng tôi.</p>
         <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
-          <button onClick={() => handleClick('Khảo sát')} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 28px', background: '#8b5cf6', borderRadius: '100px', border: 'none', color: '#fff', fontWeight: '600', cursor: 'pointer', transition: 'transform 0.2s', boxShadow: '0 4px 15px rgba(139, 92, 246, 0.4)' }}><FileText size={18} /> Làm khảo sát</button>
-          <button onClick={() => handleClick('Góp ý')} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 28px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '100px', border: '1px solid rgba(255, 255, 255, 0.2)', color: '#e4e4e7', fontWeight: '600', cursor: 'pointer', transition: 'background 0.2s' }}><MessageCircle size={18} /> Gửi góp ý</button>
+          <button onClick={() => { handleClick('Khảo sát'); window.open('https://forms.gle/zUcp6voSQga6nzvQ8', '_blank'); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 28px', background: BRAND.primary, borderRadius: '100px', border: 'none', color: '#fff', fontWeight: '600', cursor: 'pointer', transition: 'transform 0.2s', boxShadow: `0 4px 15px ${BRAND.soft}` }}><FileText size={18} /> Làm khảo sát</button>
+          <button onClick={() => { handleClick('Góp ý'); window.open('https://forms.gle/9DfnG5uGaF8uaGnv8', '_blank'); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 28px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '100px', border: '1px solid rgba(255, 255, 255, 0.2)', color: '#e4e4e7', fontWeight: '600', cursor: 'pointer', transition: 'background 0.2s' }}><MessageCircle size={18} /> Gửi góp ý</button>
         </div>
       </div>
       <div style={{ position: 'absolute', top: '-50%', left: '-20%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(139, 92, 246, 0.15), transparent 70%)', filter: 'blur(60px)' }} />
@@ -389,7 +487,7 @@ const SurveySection = () => {
 };
 
 // --- DEFINING NewsArticle BEFORE ArticleDetail ---
-const NewsArticle = ({ title, category, excerpt, author, date, image, views, isNew, onClick }) => {
+const NewsArticle = ({ title, category, excerpt, author, date, image, video, views, isNew, onClick }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [displayViews, setDisplayViews] = useState(views);
 
@@ -422,14 +520,14 @@ const NewsArticle = ({ title, category, excerpt, author, date, image, views, isN
         background: isHovered ? 'rgba(30, 41, 59, 0.6)' : 'rgba(17, 24, 39, 0.3)',
         backdropFilter: 'blur(12px)',
         border: isHovered 
-          ? '1px solid rgba(168, 85, 247, 0.3)'
+          ? `1px solid ${BRAND.border}`
           : '1px solid rgba(255, 255, 255, 0.05)',
         borderRadius: '20px',
         padding: '24px',
         transition: 'all 400ms cubic-bezier(0.175, 0.885, 0.32, 1.275)',
         transform: isHovered ? 'translateY(-8px) scale(1.01)' : 'translateY(0) scale(1)',
         boxShadow: isHovered
-           ? '0 15px 30px -10px rgba(0, 0, 0, 0.4), 0 0 15px rgba(139, 92, 246, 0.1)'
+           ? `0 15px 30px -10px rgba(0, 0, 0, 0.4), 0 0 15px ${BRAND.soft}`
            : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
         cursor: 'pointer',
         position: 'relative',
@@ -442,18 +540,22 @@ const NewsArticle = ({ title, category, excerpt, author, date, image, views, isN
     >
       <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.03) 45%, rgba(255, 255, 255, 0.02) 50%, transparent 54%)', transform: isHovered ? 'translateX(100%)' : 'translateX(-100%)', transition: 'transform 0.6s', pointerEvents: 'none', zIndex: 2 }} />
 
-      {!image && isNew && (
+      {!image && !video && isNew && (
         <span style={{ position: 'absolute', top: '24px', right: '24px', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', padding: '4px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '500', border: '1px solid rgba(59, 130, 246, 0.2)', zIndex: 10 }}>Mới</span>
       )}
 
-      {image && (
+      {(image || video) && (
         <div style={{ width: '100%', height: '200px', borderRadius: '16px', overflow: 'hidden', marginBottom: '20px', background: 'rgba(255, 255, 255, 0.02)', flexShrink: 0, position: 'relative' }}>
-          <img src={image} alt={title} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 600ms cubic-bezier(0.4, 0, 0.2, 1)', transform: isHovered ? 'scale(1.05)' : 'scale(1)' }} />
+          {video ? (
+            <video src={video} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted loop playsInline />
+          ) : (
+            <img src={image} alt={title} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 600ms cubic-bezier(0.4, 0, 0.2, 1)', transform: isHovered ? 'scale(1.05)' : 'scale(1)' }} />
+          )}
           {isNew && <span style={{ position: 'absolute', top: '12px', right: '12px', background: 'rgba(17, 24, 39, 0.75)', backdropFilter: 'blur(4px)', color: '#60a5fa', padding: '4px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', border: '1px solid rgba(59, 130, 246, 0.3)', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>Mới</span>}
         </div>
       )}
       <div style={{ flex: 1, position: 'relative', zIndex: 1 }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: isHovered ? 'rgba(168, 85, 247, 0.2)' : 'rgba(168, 85, 247, 0.1)', color: '#c084fc', padding: '4px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '500', marginBottom: '12px', border: '1px solid rgba(168, 85, 247, 0.15)', transition: 'all 300ms' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: isHovered ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.1)', color: BRAND.primaryHover, padding: '4px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '500', marginBottom: '12px', border: `1px solid ${BRAND.border}`, transition: 'all 300ms' }}>
           {getCategoryIcon(category)} {category}
         </div>
         <h3 style={{ fontSize: '20px', fontWeight: '600', color: isHovered ? '#fff' : '#f9fafb', marginBottom: '12px', lineHeight: '1.4', transition: 'color 300ms' }}>{title}</h3>
@@ -461,10 +563,10 @@ const NewsArticle = ({ title, category, excerpt, author, date, image, views, isN
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: isHovered ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(255, 255, 255, 0.05)', marginTop: 'auto', transition: 'border-color 300ms' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '600', color: '#fff', boxShadow: isHovered ? '0 0 10px rgba(118, 75, 162, 0.5)' : 'none', transition: 'box-shadow 300ms' }}>{author[0]}</div>
+          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: PRIMARY_GRADIENT, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '600', color: '#fff', boxShadow: isHovered ? `0 0 10px ${BRAND.soft}` : 'none', transition: 'box-shadow 300ms' }}>{author[0]}</div>
           <div><div style={{ fontSize: '13px', color: isHovered ? '#fff' : '#e5e7eb', fontWeight: '500', transition: 'color 300ms' }}>{author}</div><div style={{ fontSize: '12px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}><Calendar size={12} /><span>{date}</span></div></div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: isHovered ? '#a78bfa' : '#6b7280', fontSize: '13px', transition: 'color 300ms' }}><TrendingUp size={14} /><span>{displayViews.toLocaleString()}</span></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: isHovered ? BRAND.primaryHover : '#6b7280', fontSize: '13px', transition: 'color 300ms' }}><TrendingUp size={14} /><span>{displayViews.toLocaleString()}</span></div>
       </div>
     </div>
   );
@@ -486,6 +588,8 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
     setViews(article.views || 0);
     setUserAction(null); 
   }, [article.id]);
+
+  const readingMinutes = calculateReadingTime(article);
 
   const handleCopyLink = () => {
     try {
@@ -607,20 +711,24 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
 
       <FadeInSection>
         <div style={{ marginBottom: '32px' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(168, 85, 247, 0.15)', color: '#d8b4fe', padding: '6px 16px', borderRadius: '20px', fontSize: '14px', fontWeight: '600', marginBottom: '16px', border: '1px solid rgba(168, 85, 247, 0.3)' }}>{getCategoryIcon(article.category)} {article.category}</div>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(147, 51, 234, 0.15)', color: BRAND.primaryHover, padding: '6px 16px', borderRadius: '20px', fontSize: '14px', fontWeight: '600', marginBottom: '16px', border: `1px solid ${BRAND.border}` }}>{getCategoryIcon(article.category)} {article.category}</div>
           <h1 style={{ fontSize: 'clamp(28px, 6vw, 40px)', fontWeight: '700', color: '#ffffff', lineHeight: '1.25', marginBottom: '18px' }}>{article.title}</h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: '24px', color: '#9ca3af', fontSize: '14px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><User size={16} color="#a78bfa" /><span style={{ color: '#e5e7eb', fontWeight: '500' }}>{article.author}</span></div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Calendar size={16} color="#a78bfa" /><span>{article.date}</span></div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Clock size={16} color="#a78bfa" /><span>5 phút đọc</span></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Clock size={16} color="#a78bfa" /><span>{readingMinutes} phút đọc</span></div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><TrendingUp size={16} color="#a78bfa" /><span>{views.toLocaleString()} lượt xem</span></div>
           </div>
         </div>
 
         <div style={{ marginBottom: '40px' }}>
-          {article.image && (
-            <div style={{ width: '100%', height: 'clamp(240px, 45vw, 500px)', borderRadius: '24px', overflow: 'hidden', marginBottom: '20px', boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-              <img src={article.image} alt={article.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          {(article.image || article.video) && (
+            <div style={{ width: '100%', height: 'clamp(240px, 45vw, 500px)', borderRadius: '24px', overflow: 'hidden', marginBottom: '20px', boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)', border: '1px solid rgba(255, 255, 255, 0.1)', background: '#000' }}>
+              {article.video ? (
+                <video src={article.video} controls style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              ) : (
+                <img src={article.image} alt={article.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              )}
             </div>
           )}
            
@@ -635,7 +743,7 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
               </button>
             </div>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <button onClick={handleLike} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: userAction === 'like' ? 'rgba(139, 92, 246, 0.2)' : 'transparent', border: `1px solid ${userAction === 'like' ? '#8b5cf6' : 'rgba(255,255,255,0.1)'}`, borderRadius: '20px', color: userAction === 'like' ? '#a78bfa' : '#9ca3af', cursor: 'pointer', transition: 'all 0.2s' }}>
+                <button onClick={handleLike} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: userAction === 'like' ? 'rgba(147, 51, 234, 0.18)' : 'transparent', border: `1px solid ${userAction === 'like' ? BRAND.primary : 'rgba(255,255,255,0.1)'}`, borderRadius: '20px', color: userAction === 'like' ? BRAND.primaryHover : '#9ca3af', cursor: 'pointer', transition: 'all 0.2s' }}>
                     <ThumbsUp size={18} fill={userAction === 'like' ? "currentColor" : "none"} /> <span>{likes}</span>
                 </button>
                 <button onClick={handleDislike} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: userAction === 'dislike' ? 'rgba(239, 68, 68, 0.15)' : 'transparent', border: `1px solid ${userAction === 'dislike' ? '#ef4444' : 'rgba(255,255,255,0.1)'}`, borderRadius: '20px', color: userAction === 'dislike' ? '#f87171' : '#9ca3af', cursor: 'pointer', transition: 'all 0.2s' }}>
@@ -645,9 +753,8 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
           </div>
         </div>
 
-        <div style={{ fontSize: '18px', lineHeight: '1.6', color: '#e2e8f0', background: 'rgba(17, 24, 39, 0.4)', backdropFilter: 'blur(12px)', padding: '40px', borderRadius: '24px', border: '1px solid rgba(255, 255, 255, 0.05)', boxShadow: '0 4px 20px rgba(0,0,0,0.2)', marginBottom: 'clamp(32px, 6vw, 56px)' }}>
-          <p style={{ marginBottom: '24px', fontSize: '20px', fontWeight: '500', color: '#fff' }}>{article.excerpt}</p>
-          {article.content ? (<div dangerouslySetInnerHTML={{ __html: article.content }} />) : (<><p style={{ marginBottom: '20px' }}>Nội dung chi tiết của bài viết...</p></>)}
+        <div style={{ fontSize: '18px', lineHeight: '1.6', color: '#e2e8f0', background: 'rgba(17, 24, 39, 0.4)', backdropFilter: 'blur(12px)', padding: '40px', borderRadius: '24px', border: '1px solid rgba(255, 255, 255, 0.05)', boxShadow: '0 4px 20px rgba(0,0,0,0.2)', marginBottom: 'clamp(32px, 6vw, 56px)' }} className="article-content">
+          {article.content ? (<div dangerouslySetInnerHTML={{ __html: enhanceLinks(article.content) }} />) : (<><p style={{ marginBottom: '20px' }}>Nội dung chi tiết của bài viết...</p></>)}
           {article.sources && article.sources.length > 0 && (
             <div style={{ marginTop: '40px', paddingTop: '20px', borderTop: '1px dashed rgba(255,255,255,0.1)' }}>
                <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#9ca3af', marginBottom: '12px' }}>Nguồn tham khảo:</h4>
@@ -685,7 +792,7 @@ const VideoShowcase = () => {
   const [progress, setProgress] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
-  const videoUrl = "https://github.com/SniffenBaka/KDC/releases/download/v1/THPT_Tam_Phu_20_Nam.mp4";
+  const videoUrl = "https://github.com/SniffenBaka/KDC/releases/download/v2/video.mp4";
 
   // --- NEW LOADING STATE ---
   const [isLoading, setIsLoading] = useState(true);
@@ -858,7 +965,7 @@ const VideoShowcase = () => {
             </button>
             <div style={{ position: 'absolute', bottom: '20px', left: '20px', right: '20px', display: 'flex', gap: '12px', alignItems: 'center' }}>
               <div style={{ flex: 1, height: '4px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '2px', overflow: 'hidden' }}>
-                <div style={{ height: '100%', background: 'linear-gradient(90deg, #7c3aed 0%, #a78bfa 100%)', width: `${progress}%`, transition: 'width 100ms linear' }} />
+                <div style={{ height: '100%', background: PRIMARY_GRADIENT, width: `${progress}%`, transition: 'width 100ms linear' }} />
               </div>
             </div>
           </>
@@ -868,24 +975,117 @@ const VideoShowcase = () => {
   );
 };
 
-// 8. Create Post Modal - UPDATED WITH RICH TEXT EDITOR
+// 8. Welcome Modal for first-time users
+const WelcomeModal = ({ isOpen, initialName = '', onSubmit }) => {
+  const [name, setName] = useState(initialName);
+
+  useEffect(() => {
+    if (isOpen) setName(initialName || '');
+  }, [isOpen, initialName]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = () => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    onSubmit(trimmed);
+  };
+
+  const isDisabled = !name.trim();
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 12000, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+      <div style={{ width: '100%', maxWidth: '420px', background: '#0b0b10', border: '1px solid rgba(139, 92, 246, 0.35)', borderRadius: '24px', padding: '40px 32px', textAlign: 'center', boxShadow: '0 0 50px rgba(139, 92, 246, 0.15)', animation: 'slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+        <div style={{ width: '80px', height: '80px', margin: '0 auto 24px', borderRadius: '20px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <img src={BRAND.logo} alt="Eight Ducks" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        </div>
+        <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', marginBottom: '10px' }}>Chào bạn mới!</h2>
+        <p style={{ color: '#a1a1aa', marginBottom: '28px', lineHeight: '1.5' }}>Chào mừng đến với Eight Ducks.<br/>Chúng mình nên gọi bạn là gì nhỉ?</p>
+        
+        <div style={{ marginBottom: '24px' }}>
+          <input 
+            autoFocus
+            type="text" 
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !isDisabled) { e.preventDefault(); handleSubmit(); } }}
+            placeholder="Nhập tên hoặc biệt danh..."
+            style={{ width: '100%', padding: '16px', borderRadius: '12px', background: '#18181b', border: '1px solid #27272a', color: '#fff', fontSize: '16px', textAlign: 'center', outline: 'none', transition: 'border 0.2s' }}
+            onFocus={(e) => e.target.style.borderColor = BRAND.primary}
+            onBlur={(e) => e.target.style.borderColor = '#27272a'}
+          />
+        </div>
+        
+        <button
+          onClick={handleSubmit}
+          disabled={isDisabled}
+          style={{ 
+            width: '100%', 
+            padding: '14px 20px', 
+            borderRadius: '10px', 
+            background: isDisabled ? '#27272a' : PRIMARY_GRADIENT,
+            border: 'none', 
+            color: isDisabled ? '#52525b' : '#fff',
+            fontSize: '15px', 
+            fontWeight: 600, 
+            cursor: isDisabled ? 'not-allowed' : 'pointer',
+            boxShadow: isDisabled ? 'none' : `0 10px 30px ${BRAND.soft}`,
+            opacity: isDisabled ? 0.5 : 1,
+            transition: 'all 0.3s'
+          }}
+          onMouseEnter={(e) => { 
+  if (!isDisabled) {
+    e.currentTarget.style.background = `linear-gradient(90deg, ${BRAND.primaryHover} 0%, ${BRAND.primary} 100%)`;
+    e.currentTarget.style.transform = 'translateY(-2px)';
+    e.currentTarget.style.boxShadow = `0 15px 45px rgba(139, 92, 246, 0.35)`;
+    e.currentTarget.style.letterSpacing = '0.5px';
+  }
+}}
+onMouseLeave={(e) => { 
+  if (!isDisabled) {
+    e.currentTarget.style.background = PRIMARY_GRADIENT;
+    e.currentTarget.style.transform = 'translateY(0)';
+    e.currentTarget.style.boxShadow = `0 10px 30px ${BRAND.soft}`;
+    e.currentTarget.style.letterSpacing = '0px';
+  }
+}}
+        >
+          Bắt đầu khám phá
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// 9. Create Post Modal - UPDATED WITH RICH TEXT EDITOR
 const CreatePostModal = ({ isOpen, onClose, onPost }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [category, setCategory] = useState('Tin Trường');
+  const [category, setCategory] = useState('Tình cảm tuổi học trò');
   const [isDragging, setIsDragging] = useState(false);
   const [file, setFile] = useState(null);
   const fileInputRef = useRef(null); // Reference for hidden file input
-  const textAreaRef = useRef(null);
+  const inlineImageInputRef = useRef(null);
+  const editorRef = useRef(null);
+  const [formatState, setFormatState] = useState({ bold: false, italic: false, underline: false, ul: false });
 
   // Reset form on open
   useEffect(() => {
     if (isOpen) {
         setTitle('');
         setContent('');
-        setCategory('Tin Trường');
+        setCategory('Tình cảm tuổi học trò');
         setFile(null);
+        if (editorRef.current) editorRef.current.innerHTML = '';
+        setFormatState({ bold: false, italic: false, underline: false, ul: false });
     }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onSelection = () => refreshFormatState();
+    document.addEventListener('selectionchange', onSelection);
+    return () => document.removeEventListener('selectionchange', onSelection);
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -901,48 +1101,131 @@ const CreatePostModal = ({ isOpen, onClose, onPost }) => {
       }
   };
 
-  // Helper function to insert HTML tags for rich text
-  const insertTag = (startTag, endTag) => {
-      if (!textAreaRef.current) return;
-      const textarea = textAreaRef.current;
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const text = textarea.value;
-      const before = text.substring(0, start);
-      const selection = text.substring(start, end);
-      const after = text.substring(end);
-      
-      const newText = before + startTag + selection + endTag + after;
-      setContent(newText);
-      
-      // Restore focus and cursor
-      setTimeout(() => {
-          textarea.focus();
-          textarea.setSelectionRange(start + startTag.length, end + startTag.length);
-      }, 0);
+  const syncContent = () => { if (editorRef.current) setContent(editorRef.current.innerHTML); };
+
+  const applyCommand = (command, value = null) => {
+    if (!editorRef.current) return;
+    editorRef.current.focus();
+    document.execCommand(command, false, value);
+    syncContent();
+    refreshFormatState();
+  };
+
+  const handleCreateLink = () => {
+    if (!editorRef.current) return;
+    const url = prompt('Dán link (https://...)');
+    if (!url) return;
+    editorRef.current.focus();
+    document.execCommand('createLink', false, url);
+    const selection = window.getSelection();
+    const anchor = selection?.anchorNode?.parentElement?.closest('a');
+    if (anchor) {
+      anchor.target = '_blank';
+      anchor.rel = 'noopener noreferrer';
+      anchor.classList.add('article-link');
+    }
+    syncContent();
+    refreshFormatState();
+  };
+
+  const handleInlineImageInsert = (chosenFile) => {
+    if (!chosenFile) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target.result;
+      const fileName = chosenFile.name || 'image.png';
+      if (editorRef.current) {
+        editorRef.current.focus();
+        const html = `<span class="inline-image-placeholder" data-img="${dataUrl}">\\${fileName}\\</span><p><br/></p>`;
+        document.execCommand('insertHTML', false, html);
+        syncContent();
+        refreshFormatState();
+      }
+    };
+    reader.readAsDataURL(chosenFile);
+  };
+
+  const handleInlineImagePick = (e) => {
+    const chosen = e.target.files && e.target.files[0];
+    if (chosen) handleInlineImageInsert(chosen);
+    e.target.value = '';
+  };
+
+  const sanitizeInlineImages = (html) => {
+    return html.replace(/<img[^>]*src=["']([^"']+)["'][^>]*>/gi, (match, src) => {
+      const name = (src.split('/').pop() || 'image').split('?')[0] || 'image';
+      return `<span class="inline-image-placeholder" data-img="${src}">\\${name}\\</span>`;
+    });
+  };
+
+  const handleEditorInput = (e) => {
+    const raw = e.currentTarget.innerHTML;
+    const sanitized = sanitizeInlineImages(raw);
+    if (sanitized !== raw && editorRef.current) {
+      editorRef.current.innerHTML = sanitized;
+    }
+    setContent(sanitized);
+    refreshFormatState();
+  };
+
+  const handleInsertTable = () => {
+    if (!editorRef.current) return;
+    const rows = parseInt(prompt('Số dòng? (>=1)', '2'), 10);
+    const cols = parseInt(prompt('Số cột? (>=1)', '2'), 10);
+    if (!rows || rows < 1 || !cols || cols < 1) return;
+    const headerCells = Array.from({ length: cols }).map((_, idx) => `<th style="border:1px solid #27272a; padding:8px;">Tiêu đề ${idx + 1}</th>`).join('');
+    const bodyRows = Array.from({ length: rows }).map(() => {
+      const cells = Array.from({ length: cols }).map(() => `<td style="border:1px solid #27272a; padding:8px;">Nội dung</td>`).join('');
+      return `<tr>${cells}</tr>`;
+    }).join('');
+    const tableHtml = `<table style="width:100%; border-collapse:collapse; margin:10px 0;">${headerCells ? `<tr>${headerCells}</tr>` : ''}${bodyRows}</table><p><br/></p>`;
+    editorRef.current.focus();
+    document.execCommand('insertHTML', false, tableHtml);
+    syncContent();
+    refreshFormatState();
+  };
+
+  const refreshFormatState = () => {
+    setFormatState({
+      bold: document.queryCommandState('bold'),
+      italic: document.queryCommandState('italic'),
+      underline: document.queryCommandState('underline'),
+      ul: document.queryCommandState('insertUnorderedList')
+    });
   };
 
   // Handle Post Submission
   const handleSubmit = () => {
-    if (!title.trim() || !content.trim()) {
-        alert("Vui lòng nhập tiêu đề và nội dung bài viết!");
-        return;
+    const cleanText = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!title.trim() || !cleanText) {
+      alert("Vui lòng nhập tiêu đề và nội dung bài viết!");
+      return;
     }
 
+    const isVideo = file && file.type && file.type.startsWith('video');
+    const coverUrl = file ? URL.createObjectURL(file) : 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&h=600&fit=crop';
+    const excerptText = cleanText.length > 140 ? `${cleanText.substring(0, 140)}...` : cleanText;
+
+    const contentWithImages = content.replace(/<span class="inline-image-placeholder" data-img="([^"]+)">([^<]*)<\/span>/g, (match, url, name) => {
+      const cleanName = name || 'image';
+      return `<img src="${url}" alt="${cleanName}" style="max-width:100%; border-radius:12px; margin: 10px 0;" />`;
+    });
+
     const newPost = {
-        id: Date.now(),
-        title: title,
-        category: category,
-        excerpt: content.replace(/<[^>]*>?/gm, '').substring(0, 100) + '...', // Strip HTML for excerpt
-        author: 'Bạn', // User is the author
-        date: new Date().toLocaleDateString('vi-VN'),
-        image: file ? URL.createObjectURL(file) : 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&h=600&fit=crop', // Use selected image or default
-        views: 0,
-        likes: 0,
-        dislikes: 0,
-        isNew: true, // Mark as new
-        comments: [],
-        content: content.replace(/\n/g, '<br/>') // Ensure newlines are preserved in HTML
+      id: Date.now(),
+      title: title,
+      category: category,
+      excerpt: excerptText,
+      author: 'Bạn', // User is the author
+      date: new Date().toLocaleDateString('vi-VN'),
+      image: isVideo ? '' : coverUrl,
+      video: isVideo ? coverUrl : '',
+      views: 0,
+      likes: 0,
+      dislikes: 0,
+      isNew: true, // Mark as new
+      comments: [],
+      content: enhanceLinks(contentWithImages)
     };
 
     onPost(newPost); // Call parent handler
@@ -960,10 +1243,9 @@ const CreatePostModal = ({ isOpen, onClose, onPost }) => {
           <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#e4e4e7', marginBottom: '8px' }}>Danh mục</label>
             <select value={category} onChange={(e) => setCategory(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: '#18181b', border: '1px solid #27272a', borderRadius: '8px', color: '#f4f4f5', fontSize: '14px', outline: 'none', transition: 'border 0.2s' }}>
-              <option value="Tin Trường">Tin Trường</option>
-              <option value="Học Tập">Học Tập</option>
-              <option value="Giải Trí">Giải Trí</option>
-              <option value="Kỹ Năng Sống">Kỹ Năng Sống</option>
+              <option value="Tình cảm tuổi học trò">Tình cảm tuổi học trò</option>
+              <option value="Kí ức tươi đẹp của thanh xuân">Kí ức tươi đẹp của thanh xuân</option>
+              <option value="Chia sẻ cảm hứng">Chia sẻ cảm hứng</option>
             </select>
           </div>
 
@@ -975,25 +1257,37 @@ const CreatePostModal = ({ isOpen, onClose, onPost }) => {
           <div style={{ marginBottom: '24px' }}>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#e4e4e7', marginBottom: '8px' }}>Nội dung</label>
             
-            {/* RICH TEXT TOOLBAR */}
+            {/* WYSIWYG TOOLBAR */}
             <div className="rte-toolbar">
-                <button className="rte-btn" onClick={() => insertTag('<b>', '</b>')} title="In đậm"><Bold size={16}/></button>
-                <button className="rte-btn" onClick={() => insertTag('<i>', '</i>')} title="Nghiêng"><Italic size={16}/></button>
-                <button className="rte-btn" onClick={() => insertTag('<u>', '</u>')} title="Gạch chân"><Underline size={16}/></button>
+                <button className={`rte-btn ${formatState.bold ? 'is-active' : ''}`} onClick={() => applyCommand('bold')} title="In ??m"><Bold size={16}/></button>
+                <button className={`rte-btn ${formatState.italic ? 'is-active' : ''}`} onClick={() => applyCommand('italic')} title="Nghi?ng"><Italic size={16}/></button>
+                <button className={`rte-btn ${formatState.underline ? 'is-active' : ''}`} onClick={() => applyCommand('underline')} title="G?ch ch?n"><Underline size={16}/></button>
                 <div style={{ width: '1px', height: '20px', background: '#3f3f46', margin: '0 4px' }}></div>
-                <button className="rte-btn" onClick={() => insertTag('<h3>', '</h3>')} title="Tiêu đề lớn"><Type size={16}/></button>
-                <button className="rte-btn" onClick={() => insertTag('<ul>\n<li>', '</li>\n</ul>')} title="Danh sách"><List size={16}/></button>
-                <button className="rte-btn" onClick={() => insertTag('<a href="#" style="color:#60a5fa">', '</a>')} title="Link"><Link2 size={16}/></button>
-                <button className="rte-btn" onClick={() => insertTag('<img src="', '" style="width:100%; border-radius:12px; margin: 10px 0;" />')} title="Ảnh từ URL"><ImageIcon size={16}/></button>
+                <button className={`rte-btn ${formatState.ul ? 'is-active' : ''}`} onClick={() => applyCommand('insertUnorderedList')} title="Danh s?ch"><List size={16}/></button>
+                <button className="rte-btn" onClick={() => applyCommand('formatBlock', 'H3')} title="Ti?u ??"><Type size={16}/></button>
+                <button className="rte-btn" onClick={() => applyCommand('removeFormat')} title="X?a ??nh d?ng">Aa0</button>
+                <button className="rte-btn" onClick={handleCreateLink} title="Th?m link"><Link2 size={16}/></button>
+                <button className="rte-btn" onClick={() => inlineImageInputRef.current?.click()} title="Ch?n ?nh t? m?y (hi?n th? t?n)"><ImageIcon size={16}/></button>
+                <button className="rte-btn" onClick={handleInsertTable} title="Th?m b?ng">Table</button>
             </div>
+            <input 
+              type="file" 
+              ref={inlineImageInputRef} 
+              style={{ display: 'none' }} 
+              accept="image/*" 
+              onChange={handleInlineImagePick} 
+            />
+            <div style={{ margin: '8px 0 4px', color: '#a1a1aa', fontSize: '12px' }}>Trình soạn thảo giống Word: bôi đen rồi bấm nút, link tự mở tab mới, ảnh lấy trực tiếp từ thiết bị.</div>
             
-            <textarea 
-                ref={textAreaRef}
-                value={content} 
-                onChange={(e) => setContent(e.target.value)} 
-                placeholder="Viết nội dung bài đăng... (Hỗ trợ HTML tags)" 
-                rows={8} 
-                style={{ width: '100%', padding: '12px', background: '#18181b', border: '1px solid #27272a', borderRadius: '0 0 8px 8px', color: '#f4f4f5', fontSize: '14px', resize: 'vertical', outline: 'none', fontFamily: 'monospace', transition: 'border 0.2s', borderTop: 'none' }} 
+            <div
+              ref={editorRef}
+              contentEditable
+              onInput={handleEditorInput}
+              onKeyUp={refreshFormatState}
+              suppressContentEditableWarning
+              data-placeholder="Viết nội dung bài đăng..."
+              className="editable"
+              style={{ width: '100%', minHeight: '200px', padding: '14px', background: '#18181b', border: '1px solid #27272a', borderRadius: '0 0 8px 8px', color: '#f4f4f5', fontSize: '15px', lineHeight: '1.6', outline: 'none', transition: 'border 0.2s', borderTop: 'none' }}
             />
           </div>
 
@@ -1012,7 +1306,7 @@ const CreatePostModal = ({ isOpen, onClose, onPost }) => {
                 onDragOver={handleDragOver} 
                 onDragLeave={handleDragLeave} 
                 onDrop={handleDrop} 
-                style={{ width: '100%', padding: '24px', background: isDragging ? 'rgba(139, 92, 246, 0.1)' : 'rgba(24, 24, 27, 0.5)', border: isDragging ? '1px dashed #8b5cf6' : '1px dashed #3f3f46', borderRadius: '8px', color: isDragging ? '#d8b4fe' : '#a1a1aa', fontSize: '14px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s' }}>
+                style={{ width: '100%', padding: '24px', background: isDragging ? 'rgba(147, 51, 234, 0.1)' : 'rgba(24, 24, 27, 0.5)', border: isDragging ? `1px dashed ${BRAND.primary}` : '1px dashed #3f3f46', borderRadius: '8px', color: isDragging ? '#d8b4fe' : '#a1a1aa', fontSize: '14px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s' }}>
               <ImageIcon size={24} style={{ opacity: 0.8 }} />
               <span>{file ? `Đã chọn: ${file.name}` : (isDragging ? "Thả file để tải lên" : "Thêm ảnh/video")}</span>
             </div>
@@ -1050,6 +1344,11 @@ const App = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [username, setUsername] = useState('');
+  const [avatar, setAvatar] = useState('');
+  const [nameDraft, setNameDraft] = useState('');
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   
   // Notifications State - INITIALIZED EMPTY as requested
   const [notifications, setNotifications] = useState([]); 
@@ -1057,8 +1356,39 @@ const App = () => {
   const [isAdmin, setIsAdmin] = useState(false);
 
   const searchInputRef = useRef(null);
+  const profileMenuRef = useRef(null);
+  const avatarIsImage = avatar && (avatar.startsWith('data:') || avatar.startsWith('http'));
+  const avatarFallback = username ? username.charAt(0).toUpperCase() : 'B';
 
   useEffect(() => { setTimeout(() => setMounted(true), 100); }, []);
+
+  useEffect(() => {
+    const storedName = localStorage.getItem(BRAND.storageKey);
+    const storedAvatar = localStorage.getItem(BRAND.avatarKey);
+    if (storedName) {
+      setUsername(storedName);
+      setNameDraft(storedName);
+    } else {
+      setShowWelcomeModal(true);
+    }
+    if (storedAvatar) {
+      setAvatar(storedAvatar);
+    } else if (storedName) {
+      const initial = storedName.charAt(0).toUpperCase();
+      setAvatar(initial);
+      localStorage.setItem(BRAND.avatarKey, initial);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
+        setProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Check URL on Load
   useEffect(() => {
@@ -1100,8 +1430,56 @@ const App = () => {
 
   useEffect(() => { if (isSearchOpen && searchInputRef.current) searchInputRef.current.focus(); }, [isSearchOpen]);
 
-  const categories = ['Tất cả', 'Tin Trường', 'Học Tập', 'Giải Trí', 'Kỹ Năng Sống'];
+  const categories = ['Tất cả', 'Tình cảm tuổi học trò', 'Kí ức thanh xuân', 'Chia sẻ cảm hứng','Góc tâm sự', 'Chuyện lớp mình'];
   const navItems = ['Trang chủ', 'Tin tức', 'Video'];
+
+  const handleSaveName = (newName) => {
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+    setUsername(trimmed);
+    setNameDraft(trimmed);
+    localStorage.setItem(BRAND.storageKey, trimmed);
+    if (!avatar) {
+      const initial = trimmed.charAt(0).toUpperCase();
+      setAvatar(initial);
+      localStorage.setItem(BRAND.avatarKey, initial);
+    }
+    setShowWelcomeModal(false);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem(BRAND.storageKey);
+    localStorage.removeItem(BRAND.avatarKey);
+    setUsername('');
+    setAvatar('');
+    setProfileMenuOpen(false);
+    setShowWelcomeModal(true);
+    setNameDraft('');
+  };
+
+  const handleOpenRename = () => {
+    setNameDraft(username);
+    setShowWelcomeModal(true);
+    setProfileMenuOpen(false);
+  };
+
+  const handleOpenAvatar = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+      const chosen = e.target.files && e.target.files[0];
+      if (!chosen) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUrl = ev.target.result;
+        setAvatar(dataUrl);
+        localStorage.setItem(BRAND.avatarKey, dataUrl);
+      };
+      reader.readAsDataURL(chosen);
+    };
+    input.click();
+  };
 
   const handleNavClick = (item) => {
     setActiveNav(item);
@@ -1212,7 +1590,7 @@ const App = () => {
             </button>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => { setSelectedArticle(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
-              <img src="https://i.ibb.co/twbnpPDK/d93ab92f-7d17-4f7e-8d6a-a2601020866b.png" alt="Logo" style={{ width: 'clamp(32px, 7vw, 40px)', height: 'clamp(32px, 7vw, 40px)', borderRadius: '10px', objectFit: 'cover', flexShrink: 0 }} />
+              <img src={BRAND.logo} alt="Logo" style={{ width: 'clamp(32px, 7vw, 40px)', height: 'clamp(32px, 7vw, 40px)', borderRadius: '10px', objectFit: 'cover', flexShrink: 0 }} />
               <div style={{ fontSize: '24px', fontWeight: '700', color: '#f9fafb', letterSpacing: '-0.5px' }}>Eight Ducks</div>
             </div>
           </div>
@@ -1242,7 +1620,7 @@ const App = () => {
                     }}
                 >
                   {item}
-                  <div style={{ position: 'absolute', bottom: '-21px', left: 0, width: '100%', height: '2px', background: 'linear-gradient(90deg, #7c3aed 0%, #a78bfa 100%)', opacity: activeNav === item ? 1 : 0, transform: activeNav === item ? 'scaleX(1)' : 'scaleX(0.5)', transition: 'all 300ms', boxShadow: '0 -4px 10px rgba(139, 92, 246, 0.5)' }} />
+                  <div style={{ position: 'absolute', bottom: '-21px', left: 0, width: '100%', height: '2px', background: PRIMARY_GRADIENT, opacity: activeNav === item ? 1 : 0, transform: activeNav === item ? 'scaleX(1)' : 'scaleX(0.5)', transition: 'all 300ms', boxShadow: '0 -4px 10px rgba(139, 92, 246, 0.5)' }} />
                 </button>
               ))}
             </div>
@@ -1310,6 +1688,31 @@ const App = () => {
                   {unreadCount > 0 && <span style={{ position: 'absolute', top: '6px', right: '6px', width: '8px', height: '8px', background: '#ef4444', borderRadius: '50%', border: '2px solid #050505' }} />}
                 </button>
                 {showNotifications && <NotificationDropdown notifications={notifications} onClose={() => setShowNotifications(false)} onMarkAllRead={handleMarkAllRead} />}
+              </div>
+
+              {/* User profile */}
+              <div ref={profileMenuRef} style={{ position: 'relative' }}>
+                <button
+                  onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${BRAND.border}`, padding: '8px 12px', borderRadius: '999px', color: '#f8fafc', cursor: 'pointer', transition: 'border 0.2s, transform 0.2s' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.border = `1px solid ${BRAND.primaryHover}`; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.border = `1px solid ${BRAND.border}`; }}
+                >
+                  <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: PRIMARY_GRADIENT, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#fff', boxShadow: `0 6px 15px ${BRAND.soft}`, overflow: 'hidden' }}>
+                    {avatarIsImage 
+                      ? <img src={avatar} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : (avatarFallback || <User size={16} />)}
+                  </div>
+                  <span style={{ fontSize: '14px', fontWeight: 600, whiteSpace: 'nowrap' }}>{username || 'Bạn mới'}</span>
+                </button>
+                {profileMenuOpen && (
+                  <div style={{ position: 'absolute', top: 'calc(100% + 10px)', right: 0, background: 'rgba(15,15,20,0.96)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', boxShadow: '0 20px 40px rgba(0,0,0,0.45)', width: '220px', padding: '12px', zIndex: 20 }}>
+                    <div style={{ fontSize: '13px', color: '#a1a1aa', marginBottom: '10px' }}>Xin chào, {username || 'bạn mới'}!</div>
+                    <button onClick={handleOpenRename} style={{ width: '100%', padding: '10px', borderRadius: '10px', border: `1px solid ${BRAND.border}`, background: 'rgba(255,255,255,0.03)', color: '#e5e7eb', cursor: 'pointer', marginBottom: '8px' }}>Đổi tên</button>
+                    <button onClick={handleOpenAvatar} style={{ width: '100%', padding: '10px', borderRadius: '10px', border: `1px solid ${BRAND.border}`, background: 'rgba(255,255,255,0.03)', color: '#e5e7eb', cursor: 'pointer', marginBottom: '8px' }}>Đổi avatar</button>
+                    <button onClick={handleLogout} style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid rgba(239,68,68,0.25)', background: 'rgba(239,68,68,0.08)', color: '#fca5a5', cursor: 'pointer' }}>Đăng xuất</button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1384,9 +1787,9 @@ const App = () => {
             <FadeInSection>
                 <div style={{ textAlign: 'center', marginBottom: 'clamp(32px, 6vw, 56px)' }}>
                 <h1 style={{ fontSize: 'clamp(40px, 9vw, 72px)', fontWeight: '800', marginBottom: '24px', background: 'linear-gradient(135deg, #fff 0%, #e2e8f0 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.03em', lineHeight: '1.4' }}> {/* Fix: lineHeight 1.4 for title */}
-                    Nơi Chia Sẻ<br />Câu Chuyện Tuổi Trẻ
+                    Khoảnh khắc Eight Ducks<br />Chạm vào kí ức thanh xuân
                 </h1>
-                <p style={{ fontSize: '20px', color: '#cbd5e1', maxWidth: '640px', margin: '0 auto', lineHeight: '1.6' }}>Tin tức, kỹ năng, cảm hứng và những câu chuyện từ chính các bạn học sinh THPT</p>
+                <p style={{ fontSize: '20px', color: '#cbd5e1', maxWidth: '760px', margin: '0 auto', lineHeight: '1.6' }}>Chủ đề: tình cảm tuổi học trò, kí ức tươi đẹp của thanh xuân và mọi cảm hứng bạn muốn sẻ chia.</p>
                 </div>
                 <VideoShowcase />
             </FadeInSection>
@@ -1400,22 +1803,22 @@ const App = () => {
                     <button 
                         key={cat} 
                         onClick={() => setSelectedCategory(cat)} 
-                        onMouseEnter={() => setHoveredCat(cat)}
-                        onMouseLeave={() => setHoveredCat(null)}
-                        style={{ 
-                            padding: '10px 24px', 
-                            borderRadius: '100px', 
-                            // Style Logic: Selected -> Purple Border, Hover -> White Border, Normal -> Faint White
-                            border: selectedCategory === cat ? '1px solid rgba(168, 85, 247, 0.4)' : (hoveredCat === cat ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)'), 
+                            onMouseEnter={() => setHoveredCat(cat)}
+                            onMouseLeave={() => setHoveredCat(null)}
+                            style={{ 
+                                padding: '10px 24px', 
+                                borderRadius: '100px', 
+                                // Style Logic: Selected -> Purple Border, Hover -> White Border, Normal -> Faint White
+                            border: selectedCategory === cat ? `1px solid ${BRAND.border}` : (hoveredCat === cat ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)'), 
                             // Style Logic: Selected -> Purple Bg, Normal/Hover -> Faint White
-                            background: selectedCategory === cat ? 'rgba(168, 85, 247, 0.15)' : 'rgba(255, 255, 255, 0.03)', 
+                            background: selectedCategory === cat ? 'rgba(147, 51, 234, 0.15)' : 'rgba(255, 255, 255, 0.03)', 
                             // Color Logic: Selected -> Purple, Hover -> White, Normal -> Gray
-                            color: selectedCategory === cat ? '#d8b4fe' : (hoveredCat === cat ? '#fff' : '#9ca3af'), 
+                            color: selectedCategory === cat ? BRAND.primaryHover : (hoveredCat === cat ? '#fff' : '#9ca3af'), 
                             fontSize: '15px', 
                             fontWeight: '500', 
                             cursor: 'pointer', 
                             transition: 'all 300ms', 
-                            boxShadow: selectedCategory === cat ? '0 0 20px rgba(168, 85, 247, 0.15)' : 'none' 
+                            boxShadow: selectedCategory === cat ? `0 0 20px ${BRAND.soft}` : 'none' 
                         }}
                     >
                     {cat}
@@ -1425,9 +1828,9 @@ const App = () => {
             </FadeInSection>
           </div>
 
-          <div style={{ maxWidth: '1800px', margin: '0 auto', padding: '0 24px 100px', marginTop: '40px', position: 'relative', zIndex: 1 }}>
+          <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 24px 100px', marginTop: '40px', position: 'relative', zIndex: 1 }}>
             {filteredArticles.length > 0 ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(360px, 100%), 1fr))', gap: '40px', alignItems: 'stretch' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 360px))', gap: '40px', alignItems: 'stretch', justifyContent: 'center', justifyItems: 'stretch' }}>
                 {filteredArticles.map((article, i) => (
                     // WRAP EACH ITEM IN FADE-IN SECTION WITH DELAY
                   <FadeInSection key={`${article.id}-${selectedCategory}`} delay={i * 100} className="stagger-item">
@@ -1442,7 +1845,12 @@ const App = () => {
                 ))}
               </div>
             ) : (
-              <div style={{ textAlign: 'center', padding: '60px', color: '#9ca3af' }}><p>Không tìm thấy bài viết nào phù hợp với từ khóa "{searchQuery}"</p></div>
+              <div style={{ textAlign: 'center', padding: '60px', color: '#d1d5db', background: 'rgba(255,255,255,0.02)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ fontSize: '40px', marginBottom: '16px' }}>📝</div>
+                <p style={{ fontSize: '18px', marginBottom: '16px' }}>Chưa có bài viết nào ở đây cả. Góc này vẫn còn trống trải quá.</p>
+                <p style={{ color: '#a1a1aa', marginBottom: '24px' }}>Hãy là người đầu tiên chia sẻ câu chuyện của bạn để mọi người cùng lắng nghe nhé!</p>
+                <button onClick={() => setShowCreatePost(true)} style={{ padding: '12px 24px', background: PRIMARY_GRADIENT, border: 'none', borderRadius: '999px', color: '#fff', fontWeight: 700, cursor: 'pointer', boxShadow: `0 8px 24px ${BRAND.soft}` }}>Viết bài ngay</button>
+              </div>
             )}
           </div>
         </>
@@ -1451,6 +1859,7 @@ const App = () => {
       <footer style={{ textAlign: 'center', padding: '60px', color: '#64748b', fontSize: '14px', borderTop: '1px solid rgba(255, 255, 255, 0.05)', position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
       Built by <img src="https://i.ibb.co/TBNykxRH/sniffen-terminal-window-v7.gif" alt="Sniffen" style={{ height: '40px', borderRadius: '4px' }} />
     </footer>
+      <WelcomeModal isOpen={showWelcomeModal} initialName={nameDraft || username} onSubmit={handleSaveName} />
       <CreatePostModal isOpen={showCreatePost} onClose={() => setShowCreatePost(false)} onPost={handleCreatePost} />
       
       <style>{GLOBAL_STYLES}</style>
