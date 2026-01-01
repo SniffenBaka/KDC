@@ -4,7 +4,7 @@ import {
   Upload, Calendar, Volume2, VolumeX, School, BookOpen, Film, 
   Lightbulb, ArrowLeft, Clock, User, Link as LinkIcon, Check, 
   MessageSquare, Image as ImageIcon, Send, MessageCircle, FileText, 
-  ThumbsUp, ThumbsDown, Loader2, VideoOff
+  ThumbsUp, ThumbsDown, Loader2, VideoOff, Trash2, Edit3, Bold, Italic, Underline, List, Type, Link2
 } from 'lucide-react';
 
 // --- 1. GLOBAL CONSTANTS & STYLES ---
@@ -188,74 +188,81 @@ const GLOBAL_STYLES = `
     box-shadow: 0 0 0 1px rgba(167, 139, 250, 0.15) inset;
     color: #d8b4fe;
   }
-
-
-  .btn-label { display: inline; }
-  @media (max-width: 560px) {
-    .btn-label { display: none !important; }
+  
+  /* Admin Panel Styles */
+  .admin-panel {
+    background: rgba(239, 68, 68, 0.05);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 30px;
+    animation: fadeIn 0.3s;
   }
-
-  @media (max-width: 768px) {
-    ::-webkit-scrollbar { width: 0px; }
-    .nav-links { display: none !important; }
-    .mobile-nav-toggle { display: inline-flex !important; }
-
-    /* Improve tap targets */
-    button { -webkit-tap-highlight-color: transparent; }
-
-    /* Prevent sticky header from pushing content weirdly on small screens */
-    body { overscroll-behavior-y: none; }
+  .admin-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    border-bottom: 1px solid rgba(239, 68, 68, 0.1);
+    padding-bottom: 12px;
   }
-
-  @media (max-width: 420px) {
-    .mobile-menu-panel { width: 94vw; }
+  .admin-panel-title {
+    color: #f87171;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+  }
+  .admin-controls-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 16px;
+  }
+  .admin-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .admin-input-label {
+    font-size: 12px;
+    color: #9ca3af;
+    font-weight: 500;
+  }
+  .admin-input {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+  
+  /* Rich Text Editor Toolbar */
+  .rte-toolbar {
+    display: flex;
+    gap: 4px;
+    background: #27272a;
+    padding: 8px;
+    border-radius: 8px 8px 0 0;
+    border: 1px solid #3f3f46;
+    border-bottom: none;
+    flex-wrap: wrap;
+  }
+  .rte-btn {
+    padding: 6px;
+    background: transparent;
+    border: none;
+    color: #a1a1aa;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+  .rte-btn:hover {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
   }
 `;
-
-// --- 2. INITIAL DATA ---
-const INITIAL_ARTICLES = [
-  { 
-    id: 1, 
-    title: 'Kỹ Thuật Pomodoro: Bí Quyết Học Tập Hiệu Quả', 
-    category: 'Học Tập', 
-    excerpt: 'Khám phá phương pháp quản lý thời gian được nhiều học sinh ưa chuộng.', 
-    author: 'Minh Anh', 
-    date: '13/12/2025', 
-    image: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&h=600&fit=crop', 
-    views: 1247, likes: 156, dislikes: 2, isNew: true,
-    comments: [
-        { id: 101, user: "Hoàng Nam", avatar: "H", text: "Phương pháp này cực kỳ hiệu quả luôn!", time: "10 phút trước" },
-        { id: 102, user: "Linh Chi", avatar: "L", text: "Mình hay bị mất tập trung, sẽ thử ngay.", time: "1 giờ trước" }
-    ],
-    content: `<p>Phương pháp Pomodoro là một kỹ thuật quản lý thời gian...</p>`
-  },
-  { 
-    id: 2, title: 'Hội Thi Văn Nghệ Chào Mừng 20/11', category: 'Tin Trường', excerpt: 'Chương trình văn nghệ đặc sắc với sự tham gia của các lớp 10, 11, 12.', author: 'Thu Hà', date: '12/12/2025', image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop', views: 2341, likes: 230, dislikes: 5, isNew: true, 
-    comments: [{ id: 201, user: "Gia Bảo", avatar: "G", text: "Lớp 11A2 diễn đỉnh quá!", time: "30 phút trước" }]
-  },
-  { id: 3, title: '5 Bộ Phim Truyền Cảm Hứng Cho Học Sinh', category: 'Giải Trí', excerpt: 'Danh sách những bộ phim hay về tuổi trẻ, ước mơ và hành trình trưởng thành.', author: 'Đức Anh', date: '11/12/2025', image: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=800&h=600&fit=crop', views: 3128, likes: 543, dislikes: 12, isNew: false, comments: [] },
-  { id: 4, title: 'Làm Thế Nào Để Tự Tin Nói Trước Đám Đông', category: 'Kỹ Năng Sống', excerpt: 'Những mẹo nhỏ giúp bạn vượt qua nỗi sợ hãi và trở nên tự tin hơn.', author: 'Lan Phương', date: '10/12/2025', image: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=800&h=600&fit=crop', views: 1856, likes: 120, dislikes: 1, isNew: false, comments: [] },
-  { id: 5, title: 'Khám Phá Câu Lạc Bộ Robotics Của Trường', category: 'Tin Trường', excerpt: 'Tìm hiểu về hoạt động của CLB Robotics và những thành tích đáng tự hào.', author: 'Quang Huy', date: '09/12/2025', image: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800&h=600&fit=crop', views: 1542, likes: 98, dislikes: 0, isNew: false, comments: [] },
-  { id: 6, title: 'Ôn Thi Đại Học: Lập Kế Hoạch Thông Minh', category: 'Học Tập', excerpt: 'Hướng dẫn chi tiết cách lập kế hoạch ôn thi hiệu quả cho học sinh lớp 12.', author: 'Mai Linh', date: '08/12/2025', image: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=800&h=600&fit=crop', views: 2764, likes: 342, dislikes: 8, isNew: false, comments: [] },
-  { id: 7, title: 'Top 10 Cuốn Sách Hay Nên Đọc Tuổi 17', category: 'Giải Trí', excerpt: 'Những cuốn sách thay đổi tư duy và giúp bạn trưởng thành hơn trong suy nghĩ.', author: 'Hải Đăng', date: '07/12/2025', image: 'https://images.unsplash.com/photo-1491841550275-ad7854e35ca6?w=800&h=600&fit=crop', views: 1890, likes: 167, dislikes: 3, isNew: true, comments: [] },
-  { 
-    id: 8, 
-    title: 'Bí Quyết Cân Bằng Giữa Học Tập & Hoạt Động Ngoại Khóa', 
-    category: 'Kỹ Năng Sống', 
-    excerpt: 'Làm sao để vừa đạt điểm cao trên lớp, vừa năng nổ trong các CLB? Lời khuyên dành riêng cho các bạn học sinh cấp 3.', 
-    author: 'Thanh Hương', 
-    date: '05/12/2025', 
-    image: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&h=600&fit=crop', 
-    views: 1560, likes: 211, dislikes: 4, isNew: false,
-    comments: [{ id: 801, user: "Minh Tuấn", avatar: "M", text: "Bài viết đúng tim đen luôn.", time: "2 giờ trước" }]
-  }
-];
-
-const INITIAL_NOTIFICATIONS = [
-  { id: 1, text: "Minh Anh đã đăng một bài viết mới về Kỹ năng sống.", time: "2 phút trước", isRead: false },
-  { id: 2, text: "CLB Robotics đang tuyển thành viên đợt 2!", time: "1 giờ trước", isRead: false },
-  { id: 3, text: "Lịch thi học kỳ I đã được cập nhật.", time: "5 giờ trước", isRead: true },
-];
 
 // --- 3. ICONS ---
 const FacebookIcon = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047v-2.6c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>);
@@ -319,10 +326,12 @@ const ShareButton = ({ icon, color, onClick }) => (
   <button onClick={onClick} style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid rgba(255, 255, 255, 0.1)', background: 'rgba(255, 255, 255, 0.03)', color: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s ease' }} onMouseEnter={(e) => { e.currentTarget.style.background = color; e.currentTarget.style.color = '#fff'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = color; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'; e.currentTarget.style.color = '#e5e7eb'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}>{icon}</button>
 );
 
-const CommentSection = ({ comments = [], onAddComment }) => {
+// Updated CommentSection to handle admin deletion
+const CommentSection = ({ comments = [], onAddComment, isAdmin, onDeleteComment }) => {
   const [newComment, setNewComment] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const handleSubmit = () => { if (newComment.trim()) { onAddComment(newComment); setNewComment(''); } };
+  
   return (
     <div style={{ marginTop: '40px' }}>
       <h3 style={{ fontSize: '20px', fontWeight: '600', color: '#f9fafb', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}><MessageSquare size={20} color="#a78bfa" /> Bình luận ({comments.length})</h3>
@@ -334,7 +343,28 @@ const CommentSection = ({ comments = [], onAddComment }) => {
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        {comments.length > 0 ? comments.map(comment => (<div key={comment.id} style={{ display: 'flex', gap: '16px' }}><div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #06b6d4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '14px', fontWeight: 'bold', flexShrink: 0 }}>{comment.avatar}</div><div><div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '6px' }}><span style={{ fontSize: '15px', fontWeight: '600', color: '#f4f4f5' }}>{comment.user}</span><span style={{ fontSize: '12px', color: '#71717a' }}>{comment.time}</span></div><p style={{ fontSize: '15px', color: '#d4d4d8', lineHeight: '1.6', background: 'rgba(255,255,255,0.03)', padding: '12px 16px', borderRadius: '0 16px 16px 16px', display: 'inline-block', border: '1px solid rgba(255,255,255,0.05)' }}>{comment.text}</p></div></div>)) : (<p style={{ color: '#71717a', fontStyle: 'italic' }}>Chưa có bình luận nào. Hãy là người đầu tiên!</p>)}
+        {comments.length > 0 ? comments.map(comment => (
+            <div key={comment.id} style={{ display: 'flex', gap: '16px', position: 'relative' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #06b6d4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '14px', fontWeight: 'bold', flexShrink: 0 }}>{comment.avatar}</div>
+                <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '6px' }}>
+                        <span style={{ fontSize: '15px', fontWeight: '600', color: '#f4f4f5' }}>{comment.user}</span>
+                        <span style={{ fontSize: '12px', color: '#71717a' }}>{comment.time}</span>
+                        {/* ADMIN DELETE COMMENT BUTTON */}
+                        {isAdmin && (
+                            <button 
+                                onClick={() => { if(window.confirm("Xóa bình luận này?")) onDeleteComment(comment.id); }}
+                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px', marginLeft: 'auto', color: '#ef4444' }}
+                                title="Xóa bình luận"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        )}
+                    </div>
+                    <p style={{ fontSize: '15px', color: '#d4d4d8', lineHeight: '1.6', background: 'rgba(255,255,255,0.03)', padding: '12px 16px', borderRadius: '0 16px 16px 16px', display: 'inline-block', border: '1px solid rgba(255,255,255,0.05)' }}>{comment.text}</p>
+                </div>
+            </div>
+        )) : (<p style={{ color: '#71717a', fontStyle: 'italic' }}>Chưa có bình luận nào. Hãy là người đầu tiên!</p>)}
       </div>
     </div>
   );
@@ -346,7 +376,7 @@ const SurveySection = () => {
     <div style={{ marginTop: '60px', padding: 'clamp(18px, 4vw, 40px)', background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(6, 182, 212, 0.05))', borderRadius: '24px', border: '1px solid rgba(139, 92, 246, 0.2)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'relative', zIndex: 2 }}>
         <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#f9fafb', marginBottom: '12px' }}>Ý kiến của bạn rất quan trọng!</h3>
-        <p style={{ color: '#a1a1aa', fontSize: '15px', marginBottom: '24px', maxWidth: '600px', margin: '0 auto 32px', lineHeight: '1.6' }}>Hãy giúp KDC Education cải thiện chất lượng nội dung bằng cách dành 1 phút để làm khảo sát nhỏ này hoặc gửi góp ý trực tiếp cho chúng tôi.</p>
+        <p style={{ color: '#a1a1aa', fontSize: '15px', marginBottom: '24px', maxWidth: '600px', margin: '0 auto 32px', lineHeight: '1.6' }}>Hãy giúp Eight Ducks cải thiện chất lượng nội dung bằng cách dành 1 phút để làm khảo sát nhỏ này hoặc gửi góp ý trực tiếp cho chúng tôi.</p>
         <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
           <button onClick={() => handleClick('Khảo sát')} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 28px', background: '#8b5cf6', borderRadius: '100px', border: 'none', color: '#fff', fontWeight: '600', cursor: 'pointer', transition: 'transform 0.2s', boxShadow: '0 4px 15px rgba(139, 92, 246, 0.4)' }}><FileText size={18} /> Làm khảo sát</button>
           <button onClick={() => handleClick('Góp ý')} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 28px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '100px', border: '1px solid rgba(255, 255, 255, 0.2)', color: '#e4e4e7', fontWeight: '600', cursor: 'pointer', transition: 'background 0.2s' }}><MessageCircle size={18} /> Gửi góp ý</button>
@@ -441,17 +471,19 @@ const NewsArticle = ({ title, category, excerpt, author, date, image, views, isN
 };
 
 // 7. Article Detail Component (DEPENDS ON NewsArticle)
-const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateArticle }) => {
+// Updated to include Admin Controls
+const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateArticle, isAdmin, onDeleteArticle, onDeleteComment }) => {
   const [copied, setCopied] = useState(false);
   const [likes, setLikes] = useState(article.likes || 0);
   const [dislikes, setDislikes] = useState(article.dislikes || 0);
+  const [views, setViews] = useState(article.views || 0);
   const [userAction, setUserAction] = useState(null); 
 
-  // Fix: Change dependency to article.id to prevent scroll on like/comment
   useEffect(() => { 
     window.scrollTo({ top: 0, behavior: 'smooth' }); 
     setLikes(article.likes || 0); 
     setDislikes(article.dislikes || 0); 
+    setViews(article.views || 0);
     setUserAction(null); 
   }, [article.id]);
 
@@ -514,10 +546,26 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
       onUpdateArticle({ ...article, likes: newLikes, dislikes: newDislikes });
   };
 
+  // Admin handlers to directly set values
+  const handleAdminUpdate = (field, value) => {
+    const newValue = parseInt(value) || 0;
+    if (field === 'views') setViews(newValue);
+    if (field === 'likes') setLikes(newValue);
+    if (field === 'dislikes') setDislikes(newValue);
+    
+    onUpdateArticle({ ...article, [field]: newValue });
+  };
+
   const handleAddComment = (text) => {
       const newComment = { id: Date.now(), user: "Bạn", avatar: "B", text: text, time: "Vừa xong" };
       const updatedArticle = { ...article, comments: [newComment, ...(article.comments || [])] };
       onUpdateArticle(updatedArticle);
+  };
+
+  // Helper to delete comment specifically for this article
+  const handleDeleteComment = (commentId) => {
+      const updatedComments = (article.comments || []).filter(c => c.id !== commentId);
+      onUpdateArticle({ ...article, comments: updatedComments });
   };
 
   const relatedArticles = allArticles.filter(a => a.id !== article.id).slice(0, 2);
@@ -528,6 +576,35 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
         <ArrowLeft size={18} /> Quay lại trang chủ
       </button>
 
+      {/* --- ADMIN PANEL START --- */}
+      {isAdmin && (
+        <div className="admin-panel">
+          <div className="admin-panel-header">
+            <div className="admin-panel-title"><Edit3 size={18} /> Admin Control Panel</div>
+            <button 
+                onClick={() => { if(window.confirm("Bạn có chắc muốn xóa bài viết này không?")) onDeleteArticle(article.id); }}
+                style={{ background: '#7f1d1d', color: '#fca5a5', border: '1px solid #991b1b', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
+                <Trash2 size={14} /> Xóa bài viết
+            </button>
+          </div>
+          <div className="admin-controls-grid">
+            <div className="admin-input-group">
+                <label className="admin-input-label">Lượt xem</label>
+                <input className="admin-input" type="number" value={views} onChange={(e) => handleAdminUpdate('views', e.target.value)} />
+            </div>
+            <div className="admin-input-group">
+                <label className="admin-input-label">Lượt thích</label>
+                <input className="admin-input" type="number" value={likes} onChange={(e) => handleAdminUpdate('likes', e.target.value)} />
+            </div>
+            <div className="admin-input-group">
+                <label className="admin-input-label">Dislike</label>
+                <input className="admin-input" type="number" value={dislikes} onChange={(e) => handleAdminUpdate('dislikes', e.target.value)} />
+            </div>
+          </div>
+        </div>
+      )}
+      {/* --- ADMIN PANEL END --- */}
+
       <FadeInSection>
         <div style={{ marginBottom: '32px' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(168, 85, 247, 0.15)', color: '#d8b4fe', padding: '6px 16px', borderRadius: '20px', fontSize: '14px', fontWeight: '600', marginBottom: '16px', border: '1px solid rgba(168, 85, 247, 0.3)' }}>{getCategoryIcon(article.category)} {article.category}</div>
@@ -536,7 +613,7 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><User size={16} color="#a78bfa" /><span style={{ color: '#e5e7eb', fontWeight: '500' }}>{article.author}</span></div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Calendar size={16} color="#a78bfa" /><span>{article.date}</span></div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Clock size={16} color="#a78bfa" /><span>5 phút đọc</span></div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><TrendingUp size={16} color="#a78bfa" /><span>{article.views.toLocaleString()} lượt xem</span></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><TrendingUp size={16} color="#a78bfa" /><span>{views.toLocaleString()} lượt xem</span></div>
           </div>
         </div>
 
@@ -546,7 +623,7 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
               <img src={article.image} alt={article.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
           )}
-          
+           
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', padding: '16px 20px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px', backdropFilter: 'blur(10px)' }}>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
               <span style={{ fontSize: '14px', color: '#9ca3af', marginRight: '8px', fontWeight: '500' }}>Chia sẻ:</span>
@@ -581,9 +658,9 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
           )}
         </div>
       </FadeInSection>
-      
+       
       <FadeInSection delay={100}><SurveySection /></FadeInSection>
-      <FadeInSection delay={200}><CommentSection comments={article.comments || []} onAddComment={handleAddComment} /></FadeInSection>
+      <FadeInSection delay={200}><CommentSection comments={article.comments || []} onAddComment={handleAddComment} isAdmin={isAdmin} onDeleteComment={handleDeleteComment} /></FadeInSection>
 
       <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', paddingTop: '40px', marginTop: '60px' }}>
         <h3 style={{ fontSize: '28px', fontWeight: '700', color: '#f9fafb', marginBottom: '32px', display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -665,7 +742,7 @@ const VideoShowcase = () => {
   }, []);
 
   useEffect(() => { if (videoRef.current) videoRef.current.muted = isMuted; }, [isMuted]);
-  
+   
   // Time Sync
   useEffect(() => {
       let rafId;
@@ -791,7 +868,7 @@ const VideoShowcase = () => {
   );
 };
 
-// 8. Create Post Modal
+// 8. Create Post Modal - UPDATED WITH RICH TEXT EDITOR
 const CreatePostModal = ({ isOpen, onClose, onPost }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -799,6 +876,7 @@ const CreatePostModal = ({ isOpen, onClose, onPost }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [file, setFile] = useState(null);
   const fileInputRef = useRef(null); // Reference for hidden file input
+  const textAreaRef = useRef(null);
 
   // Reset form on open
   useEffect(() => {
@@ -823,6 +901,27 @@ const CreatePostModal = ({ isOpen, onClose, onPost }) => {
       }
   };
 
+  // Helper function to insert HTML tags for rich text
+  const insertTag = (startTag, endTag) => {
+      if (!textAreaRef.current) return;
+      const textarea = textAreaRef.current;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const text = textarea.value;
+      const before = text.substring(0, start);
+      const selection = text.substring(start, end);
+      const after = text.substring(end);
+      
+      const newText = before + startTag + selection + endTag + after;
+      setContent(newText);
+      
+      // Restore focus and cursor
+      setTimeout(() => {
+          textarea.focus();
+          textarea.setSelectionRange(start + startTag.length, end + startTag.length);
+      }, 0);
+  };
+
   // Handle Post Submission
   const handleSubmit = () => {
     if (!title.trim() || !content.trim()) {
@@ -834,7 +933,7 @@ const CreatePostModal = ({ isOpen, onClose, onPost }) => {
         id: Date.now(),
         title: title,
         category: category,
-        excerpt: content.length > 100 ? content.substring(0, 100) + '...' : content,
+        excerpt: content.replace(/<[^>]*>?/gm, '').substring(0, 100) + '...', // Strip HTML for excerpt
         author: 'Bạn', // User is the author
         date: new Date().toLocaleDateString('vi-VN'),
         image: file ? URL.createObjectURL(file) : 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&h=600&fit=crop', // Use selected image or default
@@ -843,7 +942,7 @@ const CreatePostModal = ({ isOpen, onClose, onPost }) => {
         dislikes: 0,
         isNew: true, // Mark as new
         comments: [],
-        content: `<p>${content.replace(/\n/g, '<br/>')}</p>` // Simple HTML formatting
+        content: content.replace(/\n/g, '<br/>') // Ensure newlines are preserved in HTML
     };
 
     onPost(newPost); // Call parent handler
@@ -875,7 +974,27 @@ const CreatePostModal = ({ isOpen, onClose, onPost }) => {
 
           <div style={{ marginBottom: '24px' }}>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#e4e4e7', marginBottom: '8px' }}>Nội dung</label>
-            <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Viết nội dung bài đăng..." rows={6} style={{ width: '100%', padding: '12px', background: '#18181b', border: '1px solid #27272a', borderRadius: '8px', color: '#f4f4f5', fontSize: '14px', resize: 'vertical', outline: 'none', fontFamily: 'inherit', transition: 'border 0.2s' }} />
+            
+            {/* RICH TEXT TOOLBAR */}
+            <div className="rte-toolbar">
+                <button className="rte-btn" onClick={() => insertTag('<b>', '</b>')} title="In đậm"><Bold size={16}/></button>
+                <button className="rte-btn" onClick={() => insertTag('<i>', '</i>')} title="Nghiêng"><Italic size={16}/></button>
+                <button className="rte-btn" onClick={() => insertTag('<u>', '</u>')} title="Gạch chân"><Underline size={16}/></button>
+                <div style={{ width: '1px', height: '20px', background: '#3f3f46', margin: '0 4px' }}></div>
+                <button className="rte-btn" onClick={() => insertTag('<h3>', '</h3>')} title="Tiêu đề lớn"><Type size={16}/></button>
+                <button className="rte-btn" onClick={() => insertTag('<ul>\n<li>', '</li>\n</ul>')} title="Danh sách"><List size={16}/></button>
+                <button className="rte-btn" onClick={() => insertTag('<a href="#" style="color:#60a5fa">', '</a>')} title="Link"><Link2 size={16}/></button>
+                <button className="rte-btn" onClick={() => insertTag('<img src="', '" style="width:100%; border-radius:12px; margin: 10px 0;" />')} title="Ảnh từ URL"><ImageIcon size={16}/></button>
+            </div>
+            
+            <textarea 
+                ref={textAreaRef}
+                value={content} 
+                onChange={(e) => setContent(e.target.value)} 
+                placeholder="Viết nội dung bài đăng... (Hỗ trợ HTML tags)" 
+                rows={8} 
+                style={{ width: '100%', padding: '12px', background: '#18181b', border: '1px solid #27272a', borderRadius: '0 0 8px 8px', color: '#f4f4f5', fontSize: '14px', resize: 'vertical', outline: 'none', fontFamily: 'monospace', transition: 'border 0.2s', borderTop: 'none' }} 
+            />
           </div>
 
           <div style={{ marginBottom: '24px' }}>
@@ -925,16 +1044,32 @@ const App = () => {
   const [hoveredCat, setHoveredCat] = useState(null);
   const [hoveredIcon, setHoveredIcon] = useState(null);
 
-  // Articles State for updates
-  const [articles, setArticles] = useState(INITIAL_ARTICLES); // Corrected variable name
+  // Articles State for updates - INITIALIZED EMPTY as requested
+  const [articles, setArticles] = useState([]); 
   
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS); // Corrected variable name
+  
+  // Notifications State - INITIALIZED EMPTY as requested
+  const [notifications, setNotifications] = useState([]); 
+  
+  const [isAdmin, setIsAdmin] = useState(false);
+
   const searchInputRef = useRef(null);
 
   useEffect(() => { setTimeout(() => setMounted(true), 100); }, []);
+
+  // Check URL on Load
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("id");
+
+    if (window.location.pathname === "/post" && id) {
+      const found = articles.find(a => String(a.id) === id);
+      if (found) setSelectedArticle(found);
+    }
+  }, [articles]);
 
   // Parallax Scroll Effect for Background
   const [scrollY, setScrollY] = useState(0);
@@ -1021,6 +1156,13 @@ const App = () => {
       setSelectedArticle(updatedArticle); // Keep current article updated
   };
 
+  const handleDeleteArticle = (articleId) => {
+      const updatedArticles = articles.filter(a => a.id !== articleId);
+      setArticles(updatedArticles);
+      setSelectedArticle(null);
+      window.history.pushState({}, "", "/");
+  };
+
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const filteredArticles = articles
@@ -1070,8 +1212,8 @@ const App = () => {
             </button>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => { setSelectedArticle(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
-              <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS-ozqHx0k3ZKISo0aAuPiJJ3OH4V4IxZQX3g&s" alt="Logo" style={{ width: 'clamp(32px, 7vw, 40px)', height: 'clamp(32px, 7vw, 40px)', borderRadius: '10px', objectFit: 'cover', flexShrink: 0 }} />
-              <div style={{ fontSize: '24px', fontWeight: '700', color: '#f9fafb', letterSpacing: '-0.5px' }}>KDC</div>
+              <img src="https://i.ibb.co/twbnpPDK/d93ab92f-7d17-4f7e-8d6a-a2601020866b.png" alt="Logo" style={{ width: 'clamp(32px, 7vw, 40px)', height: 'clamp(32px, 7vw, 40px)', borderRadius: '10px', objectFit: 'cover', flexShrink: 0 }} />
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#f9fafb', letterSpacing: '-0.5px' }}>Eight Ducks</div>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
@@ -1105,6 +1247,8 @@ const App = () => {
               ))}
             </div>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', position: 'relative' }}>
+              
+              {/* === CREATE POST BUTTON (VISIBLE TO ALL) === */}
               <button onClick={() => setShowCreatePost(true)} style={{ padding: '8px 16px', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1))', border: '1px solid rgba(139, 92, 246, 0.2)', borderRadius: '8px', color: '#a78bfa', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'all 300ms', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Plus size={16} /> <span className="btn-label">Đăng bài</span>
               </button>
@@ -1118,7 +1262,23 @@ const App = () => {
                     transition: 'all 0.3s ease', 
                     border: isSearchOpen ? '1px solid rgba(255,255,255,0.1)' : '1px solid transparent' 
                 }}>
-                <input ref={searchInputRef} type="text" placeholder="Tìm kiếm..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ width: isSearchOpen ? '150px' : '0px', opacity: isSearchOpen ? 1 : 0, padding: isSearchOpen ? '8px' : '0', background: 'transparent', border: 'none', color: '#f9fafb', fontSize: '14px', outline: 'none', transition: 'all 0.3s ease' }} />
+                <input 
+                  ref={searchInputRef} 
+                  type="text" 
+                  placeholder="Tìm kiếm..." 
+                  value={searchQuery} 
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSearchQuery(value);
+                    if (value === "sniffendyz") {
+                      setIsAdmin(true);
+                      setSearchQuery("");
+                      setIsSearchOpen(false);
+                      alert("Admin Mode: ON");
+                    }
+                  }}
+                  style={{ width: isSearchOpen ? '150px' : '0px', opacity: isSearchOpen ? 1 : 0, padding: isSearchOpen ? '8px' : '0', background: 'transparent', border: 'none', color: '#f9fafb', fontSize: '14px', outline: 'none', transition: 'all 0.3s ease' }} 
+                />
                 <button 
                     onClick={() => { setIsSearchOpen(!isSearchOpen); if (isSearchOpen) setSearchQuery(''); }} 
                     onMouseEnter={() => setHoveredIcon('search')}
@@ -1207,10 +1367,15 @@ const App = () => {
       {selectedArticle ? (
         <ArticleDetail 
             article={selectedArticle} 
-            onBack={() => setSelectedArticle(null)} 
+            onBack={() => { window.history.pushState({}, "", "/"); setSelectedArticle(null); }} 
             allArticles={articles} 
-            onArticleClick={setSelectedArticle}
+            onArticleClick={(article) => {
+              window.history.pushState({}, "", `/post?id=${article.id}`);
+              setSelectedArticle(article);
+            }}
             onUpdateArticle={handleUpdateArticle}
+            isAdmin={isAdmin}
+            onDeleteArticle={handleDeleteArticle}
         />
       ) : (
         <>
@@ -1228,8 +1393,8 @@ const App = () => {
           </div>
 
           <div id="articles-section" style={{ maxWidth: '1800px', margin: '0 auto', padding: '40px 24px', position: 'relative', zIndex: 1, marginBottom: '20px' }}>
-             {/* WRAP FILTER IN FADE-IN SECTION */}
-             <FadeInSection>
+              {/* WRAP FILTER IN FADE-IN SECTION */}
+              <FadeInSection>
                 <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center' }}>
                 {categories.map((cat, i) => (
                     <button 
@@ -1266,7 +1431,13 @@ const App = () => {
                 {filteredArticles.map((article, i) => (
                     // WRAP EACH ITEM IN FADE-IN SECTION WITH DELAY
                   <FadeInSection key={`${article.id}-${selectedCategory}`} delay={i * 100} className="stagger-item">
-                    <NewsArticle {...article} onClick={() => setSelectedArticle(article)} />
+                    <NewsArticle 
+                        {...article} 
+                        onClick={() => {
+                          window.history.pushState({}, "", `/post?id=${article.id}`);
+                          setSelectedArticle(article);
+                        }} 
+                    />
                   </FadeInSection>
                 ))}
               </div>
