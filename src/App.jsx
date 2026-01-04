@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
+import { supabase } from './lib/supabase';
+import { Routes, Route, useNavigate, useParams, useLocation } from "react-router-dom";
 import { 
   Search, Bell, Menu, X, Plus, TrendingUp, Bookmark, Share2, 
   Upload, Calendar, Volume2, VolumeX, School, BookOpen, Film, 
@@ -9,6 +11,22 @@ import {
 import LightPillar from './LightPillar';
 
 // --- 1. GLOBAL CONSTANTS & STYLES ---
+// Supabase storage helper for uploads
+const uploadFile = async (bucketName, file) => {
+  if (!file || !bucketName) throw new Error('File or bucket missing');
+  if (!supabase) throw new Error('Supabase client is not configured');
+  const ext = (file.name || '').split('.').pop() || (file.type && file.type.includes('video') ? 'mp4' : 'bin');
+  const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const { error: uploadError } = await supabase.storage.from(bucketName).upload(path, file, {
+    contentType: file.type || 'application/octet-stream',
+    cacheControl: '3600',
+    upsert: false,
+  });
+  if (uploadError) throw uploadError;
+  const { data } = supabase.storage.from(bucketName).getPublicUrl(path);
+  return data?.publicUrl || '';
+};
+
 const GLOBAL_STYLES = `
   :root, body, #root {
     width: 100%;
@@ -185,9 +203,43 @@ const GLOBAL_STYLES = `
     cursor: pointer;
   }
   .mobile-menu-item.is-active {
-    border-color: rgba(167, 139, 250, 0.45);
-    box-shadow: 0 0 0 1px rgba(167, 139, 250, 0.15) inset;
-    color: #d8b4fe;
+    border-color: rgba(255, 255, 255, 0.25);
+    box-shadow: none;
+    color: #e5e7eb;
+  }
+  .mobile-profile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    margin: 6px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+  }
+  .mobile-profile-name {
+    font-size: 14px;
+    color: #e5e7eb;
+    font-weight: 600;
+  }
+  .mobile-profile-cta {
+    display: flex;
+    gap: 8px;
+    padding: 10px;
+  }
+  .mobile-profile-cta button {
+    flex: 1;
+  }
+
+  /* Mobile adjustments */
+  @media (max-width: 768px) {
+    .nav-links { display: none !important; }
+    .mobile-nav-toggle { display: inline-flex; }
+    .btn-label { display: none; }
+    .create-post-btn { display: none !important; }
+    .profile-name { display: none; }
+    nav .logo-wrap { flex-direction: row; }
+    .brand-title { font-size: 18px !important; }
   }
   
   /* Admin Panel Styles */
@@ -307,10 +359,48 @@ const GLOBAL_STYLES = `
     border-bottom-color: rgba(168, 85, 247, 0.9);
   }
   .article-content img {
+    width: 100%;
     max-width: 100%;
+    height: auto;
     border-radius: 12px;
     display: block;
     margin: 18px auto;
+  }
+  .article-figure {
+    margin: 18px 0;
+  }
+  .article-figure img {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    border-radius: 12px;
+    display: block;
+    margin: 0 auto;
+  }
+  .article-figure figcaption {
+    margin-top: 6px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    font-style: italic;
+    color: #a1a1aa;
+    text-align: center;
+  }
+  .image-caption-block {
+    display: block;
+    background: transparent;
+    border: none;
+    color: #a1a1aa;
+    font-size: 13px;
+    font-style: italic;
+    line-height: 1.5;
+    padding: 4px 0;
+    margin: 6px auto 16px;
+    max-width: 90%;
+    text-align: center;
+  }
+  .image-caption-block:focus {
+    outline: 1px solid rgba(255,255,255,0.2);
+    outline-offset: 2px;
   }
   @media (max-width: 640px) {
     .article-content img {
@@ -339,10 +429,10 @@ const XIcon = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="curre
 // --- 4. HELPERS ---
 const getCategoryIcon = (cat) => {
   switch (cat) {
-    case 'T?nh c?m tu?i h?c tr?': return <Heart size={14} />;
-    case 'Kí ức tươi đẹp của thanh xuân': return <BookOpen size={14} />;
-    case 'Chia s? c?m h?ng': return <Lightbulb size={14} />;
-    default: return null;
+    case 'Tình cảm tuổi học trò': return <Heart size={14} />;
+    case 'Ký ức tuổi đẹp của thanh xuân': return <BookOpen size={14} />;
+    case 'Chia sẻ cảm hứng': return <Lightbulb size={14} />;
+    default: return null; 
   }
 };
 
@@ -377,6 +467,179 @@ const enhanceLinks = (html = '') => {
   });
   return withTargets;
 };
+
+// Remove blob/file URLs that will break after a reload; allow http(s)/data URLs only.
+const sanitizeMediaUrl = (url, fallback = '') => {
+  if (!url || typeof url !== 'string') return fallback;
+  const trimmed = url.trim();
+  if (!trimmed) return fallback;
+  const lower = trimmed.toLowerCase();
+  if (lower.startsWith('blob:') || lower.startsWith('file:')) return fallback;
+  if (lower.startsWith('/storage/v1')) {
+    const base = (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
+    return `${base}${trimmed}`;
+  }
+  if (lower.startsWith('http://') || lower.startsWith('https://') || lower.startsWith('data:')) return trimmed;
+  return trimmed;
+};
+
+// Strip broken blob images inside rich content to avoid ERR_FILE_NOT_FOUND on reloads
+const stripInvalidMediaFromContent = (html = '') => {
+  if (!html) return '';
+  return html.replace(/<img([^>]+)src=["']blob:[^"']+["']([^>]*)>/gi, '<img$1src=""$2>');
+};
+
+// Normalize DB rows before putting them into state
+const normalizePost = (post = {}) => {
+  const cleanImage = sanitizeMediaUrl(post.image);
+  const cleanVideo = sanitizeMediaUrl(post.video);
+  return {
+    ...post,
+    image: cleanImage || null,
+    video: cleanVideo || null,
+    content: stripInvalidMediaFromContent(post.content || ''),
+    views: post.view_count ?? post.views ?? 0
+  };
+};
+
+// Basic paste sanitization for editor (keeps structure, strips unsafe tags/attrs)
+const sanitizePasteContent = (rawHtml = '') => {
+  if (!rawHtml) return '';
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = rawHtml;
+
+  wrapper.querySelectorAll('script,style,iframe,noscript,meta,link').forEach((n) => n.remove());
+
+  const allowedTags = new Set([
+    'P', 'BR', 'B', 'STRONG', 'I', 'EM', 'U', 'A', 'SPAN', 'DIV',
+    'UL', 'OL', 'LI',
+    'FIGURE', 'IMG', 'FIGCAPTION',
+    'TABLE', 'THEAD', 'TBODY', 'TR', 'TH', 'TD'
+  ]);
+
+  const unwrap = (el) => {
+    const parent = el.parentNode;
+    if (!parent) return;
+    while (el.firstChild) parent.insertBefore(el.firstChild, el);
+    parent.removeChild(el);
+  };
+
+  wrapper.querySelectorAll('*').forEach((el) => {
+    const tag = el.tagName;
+    if (!allowedTags.has(tag)) {
+      unwrap(el);
+      return;
+    }
+
+    Array.from(el.attributes).forEach((attr) => {
+      const name = attr.name.toLowerCase();
+      const isAllowed = ['href', 'src', 'alt', 'class', 'data-img', 'contenteditable'].includes(name);
+      if (name.startsWith('on') || !isAllowed) el.removeAttribute(attr.name);
+    });
+
+    if (tag === 'A') {
+      const href = el.getAttribute('href') || '';
+      if (!/^https?:\/\//i.test(href)) {
+        unwrap(el);
+        return;
+      }
+      el.setAttribute('target', '_blank');
+      el.setAttribute('rel', 'noopener noreferrer');
+    }
+
+    if (tag === 'IMG') {
+      const src = sanitizeMediaUrl(el.getAttribute('src') || '');
+      if (!src) {
+        el.remove();
+        return;
+      }
+      el.setAttribute('src', src);
+    }
+  });
+
+  wrapper.querySelectorAll('figure').forEach((fig) => {
+    const img = fig.querySelector('img');
+    if (!img) {
+      fig.remove();
+      return;
+    }
+    const src = sanitizeMediaUrl(img.getAttribute('src') || '');
+    if (!src) {
+      fig.remove();
+      return;
+    }
+    const name = img.getAttribute('alt') || 'image';
+    const captionText = fig.querySelector('figcaption')?.textContent?.trim()
+      || img.getAttribute('alt')
+      || '';
+    const span = document.createElement('span');
+    span.className = 'inline-image-placeholder';
+    span.setAttribute('contenteditable', 'false');
+    span.setAttribute('data-img', src);
+    span.textContent = name.trim();
+    const caption = document.createElement('div');
+    caption.className = 'image-caption-block';
+    caption.setAttribute('contenteditable', 'true');
+    caption.setAttribute('data-placeholder', 'Nhập chú thích ảnh...');
+    caption.textContent = captionText;
+    const wrapperBlock = document.createElement('div');
+    wrapperBlock.append(span, caption);
+    fig.replaceWith(wrapperBlock);
+  });
+
+  wrapper.querySelectorAll('img').forEach((img) => {
+    if (img.closest('figure')) return;
+    const src = sanitizeMediaUrl(img.getAttribute('src') || '');
+    if (!src) {
+      img.remove();
+      return;
+    }
+    const alt = img.getAttribute('alt') || '';
+    const captionText = alt || '';
+    const span = document.createElement('span');
+    span.className = 'inline-image-placeholder';
+    span.setAttribute('contenteditable', 'false');
+    span.setAttribute('data-img', src);
+    span.textContent = alt || 'image';
+    const caption = document.createElement('div');
+    caption.className = 'image-caption-block';
+    caption.setAttribute('contenteditable', 'true');
+    caption.setAttribute('data-placeholder', 'Nhập chú thích ảnh...');
+    caption.textContent = captionText;
+    const wrapperBlock = document.createElement('div');
+    wrapperBlock.append(span, caption);
+    img.replaceWith(wrapperBlock);
+  });
+
+  return wrapper.innerHTML.trim();
+};
+
+const formatDate = (iso) => {
+  if (!iso) return '';
+  try {
+    return new Date(iso).toLocaleString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  } catch (e) {
+    return '';
+  }
+};
+
+const AmbientBackground = ({ ambientIntensity = 1, scrollY = 0 }) => (
+  <div className="ambient-root" style={{ '--ambient-intensity': String(ambientIntensity) }}>
+    <div className="ambient-hue">
+      <div className="ambient-noise" />
+      <div className="ambient-blob a" style={{ transform: `translateY(${scrollY * 0.06}px)` }} />
+      <div className="ambient-blob b" style={{ transform: `translateY(-${scrollY * 0.05}px)` }} />
+      <div className="ambient-blob c" style={{ transform: `translateY(${scrollY * 0.03}px)` }} />
+      <div className="ambient-vignette" />
+    </div>
+  </div>
+);
 
 // --- 5. SUB-COMPONENTS ---
 
@@ -424,34 +687,95 @@ const ShareButton = ({ icon, color, onClick }) => (
   <button onClick={onClick} style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid rgba(255, 255, 255, 0.1)', background: 'rgba(255, 255, 255, 0.03)', color: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s ease' }} onMouseEnter={(e) => { e.currentTarget.style.background = color; e.currentTarget.style.color = '#fff'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = color; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'; e.currentTarget.style.color = '#e5e7eb'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}>{icon}</button>
 );
 
-// Updated CommentSection to handle admin deletion
-const CommentSection = ({ comments = [], onAddComment, isAdmin, onDeleteComment }) => {
+// Updated CommentSection to handle admin deletion & async submit
+const CommentSection = ({ comments = [], onAddComment, isAdmin, onDeleteComment, isLoading = false, isSubmitting = false, currentUser, currentAvatar }) => {
+  const isImageLike = (src) => typeof src === 'string' && (src.startsWith('data:') || src.startsWith('http://') || src.startsWith('https://'));
   const [newComment, setNewComment] = useState('');
   const [isFocused, setIsFocused] = useState(false);
-  const handleSubmit = () => { if (newComment.trim()) { onAddComment(newComment); setNewComment(''); } };
-  
+  const [visibleCount, setVisibleCount] = useState(5);
+  const visibleComments = comments.slice(0, visibleCount);
+  const hasMoreComments = comments.length > visibleCount;
+
+  useEffect(() => {
+    setVisibleCount(5);
+  }, [comments.length]);
+
+  const handleSubmit = async () => {
+    const value = newComment.trim();
+    if (!value || isSubmitting) return;
+    try {
+      const ok = await onAddComment(value);
+      if (ok) setNewComment('');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   return (
     <div style={{ marginTop: '40px' }}>
-      <h3 style={{ fontSize: '20px', fontWeight: '600', color: '#f9fafb', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}><MessageSquare size={20} color="#a78bfa" /> Bình luận ({comments.length})</h3>
+      <h3 style={{ fontSize: '20px', fontWeight: '600', color: '#f9fafb', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <MessageSquare size={20} color="#a78bfa" /> Bình luận ({comments.length})
+      </h3>
       <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '32px', padding: '20px', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '20px', border: `1px solid ${isFocused ? 'rgba(139, 92, 246, 0.4)' : 'rgba(255, 255, 255, 0.05)'}`, transition: 'all 0.3s ease', boxShadow: isFocused ? '0 0 20px rgba(139, 92, 246, 0.1)' : 'none' }}>
-        <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: PRIMARY_GRADIENT, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', flexShrink: 0 }}>B</div>
+        <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: PRIMARY_GRADIENT, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', flexShrink: 0, overflow: 'hidden' }}>
+          {isImageLike(currentAvatar)
+            ? <img src={currentAvatar} alt={currentUser || 'Bạn'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : (currentUser ? currentUser.charAt(0).toUpperCase() : <User size={18} color="#fff" />)}
+        </div>
         <div style={{ flex: 1, position: 'relative' }}>
           <textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} onFocus={() => setIsFocused(true)} onBlur={() => setIsFocused(false)} placeholder="Chia sẻ suy nghĩ của bạn..." rows={2} style={{ width: '100%', padding: '10px 0', background: 'transparent', border: 'none', color: '#e4e4e7', fontSize: '15px', resize: 'none', outline: 'none', minHeight: '24px' }} />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}><button onClick={handleSubmit} disabled={!newComment.trim()} style={{ background: newComment.trim() ? BRAND.primary : 'rgba(255,255,255,0.1)', color: newComment.trim() ? '#fff' : '#71717a', border: 'none', padding: '8px 20px', borderRadius: '20px', fontSize: '13px', fontWeight: '600', cursor: newComment.trim() ? 'pointer' : 'default', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '6px' }}>Gửi <Send size={14} /></button></div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+            <button
+              onClick={handleSubmit}
+              disabled={!newComment.trim() || isSubmitting}
+              style={{
+                background: newComment.trim() && !isSubmitting ? BRAND.primary : 'rgba(255,255,255,0.1)',
+                color: newComment.trim() && !isSubmitting ? '#fff' : '#71717a',
+                border: 'none',
+                padding: '8px 20px',
+                borderRadius: '20px',
+                fontSize: '13px',
+                fontWeight: '600',
+                cursor: newComment.trim() && !isSubmitting ? 'pointer' : 'default',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                opacity: isSubmitting ? 0.7 : 1
+              }}
+            >
+              {isSubmitting ? 'Đang gửi...' : 'Gửi'} <Send size={14} />
+            </button>
+          </div>
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        {comments.length > 0 ? comments.map(comment => (
+        {isLoading ? (
+          <p style={{ color: '#71717a' }}>Đang tải bình luận...</p>
+        ) : visibleComments.length > 0 ? visibleComments.map(comment => {
+            const author = comment.author || comment.user_name || comment.user || currentUser || 'Ẩn danh';
+            const avatarSrc = (comment.avatar && isImageLike(comment.avatar))
+              ? comment.avatar
+              : ((comment.author === currentUser || comment.user_name === currentUser || author === currentUser) && isImageLike(currentAvatar) ? currentAvatar : null);
+            const authorInitial = author ? author.charAt(0).toUpperCase() : '';
+            const time = comment.created_at
+              ? new Date(comment.created_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
+              : (comment.time || '');
+            const content = comment.content || comment.text || '';
+            return (
             <div key={comment.id} style={{ display: 'flex', gap: '16px', position: 'relative' }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #06b6d4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '14px', fontWeight: 'bold', flexShrink: 0 }}>{comment.avatar}</div>
+                <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #06b6d4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '14px', fontWeight: 'bold', flexShrink: 0, overflow: 'hidden' }}>
+                  {avatarSrc
+                    ? <img src={avatarSrc} alt={author} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : (authorInitial || <User size={16} color="#fff" />)}
+                </div>
                 <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '6px' }}>
-                        <span style={{ fontSize: '15px', fontWeight: '600', color: '#f4f4f5' }}>{comment.user}</span>
-                        <span style={{ fontSize: '12px', color: '#71717a' }}>{comment.time}</span>
-                        {/* ADMIN DELETE COMMENT BUTTON */}
+                        <span style={{ fontSize: '15px', fontWeight: '600', color: '#f4f4f5' }}>{author}</span>
+                        <span style={{ fontSize: '12px', color: '#71717a' }}>{time}</span>
                         {isAdmin && (
-                            <button 
-                                onClick={() => { if(window.confirm("Xóa bình luận này?")) onDeleteComment(comment.id); }}
+                            <button
+                                onClick={() => { if(window.confirm('Xóa bình luận này?')) onDeleteComment(comment.id); }}
                                 style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px', marginLeft: 'auto', color: '#ef4444' }}
                                 title="Xóa bình luận"
                             >
@@ -459,10 +783,20 @@ const CommentSection = ({ comments = [], onAddComment, isAdmin, onDeleteComment 
                             </button>
                         )}
                     </div>
-                    <p style={{ fontSize: '15px', color: '#d4d4d8', lineHeight: '1.6', background: 'rgba(255,255,255,0.03)', padding: '12px 16px', borderRadius: '0 16px 16px 16px', display: 'inline-block', border: '1px solid rgba(255,255,255,0.05)' }}>{comment.text}</p>
+                    <p style={{ fontSize: '15px', color: '#d4d4d8', lineHeight: '1.6', background: 'rgba(255,255,255,0.03)', padding: '12px 16px', borderRadius: '0 16px 16px 16px', display: 'inline-block', border: '1px solid rgba(255,255,255,0.05)' }}>{content}</p>
                 </div>
             </div>
-        )) : (<p style={{ color: '#71717a', fontStyle: 'italic' }}>Chưa có bình luận nào. Hãy là người đầu tiên!</p>)}
+        ); }) : (<p style={{ color: '#71717a', fontStyle: 'italic' }}>Chưa có bình luận nào. Hãy là người đầu tiên!</p>)}
+        {hasMoreComments && (
+          <button
+            onClick={() => setVisibleCount((prev) => prev + 5)}
+            style={{ alignSelf: 'flex-start', background: 'linear-gradient(135deg, rgba(147,51,234,0.16), rgba(59,130,246,0.12))', border: '1px dashed rgba(255,255,255,0.35)', color: '#e9d5ff', padding: '10px 14px', borderRadius: '12px', cursor: 'pointer', boxShadow: '0 8px 20px rgba(0,0,0,0.35)', transition: 'transform 0.2s' }}
+            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
+          >
+            Nhấn vào đây để xem thêm bình luận
+          </button>
+        )}
       </div>
     </div>
   );
@@ -487,9 +821,15 @@ const SurveySection = () => {
 };
 
 // --- DEFINING NewsArticle BEFORE ArticleDetail ---
-const NewsArticle = ({ title, category, excerpt, author, date, image, video, views, isNew, onClick }) => {
+const NewsArticle = ({ title, category, excerpt, author, date, created_at, image, video, views = 0, view_count, isNew, onClick }) => {
   const [isHovered, setIsHovered] = useState(false);
-  const [displayViews, setDisplayViews] = useState(views);
+  const baseViews = typeof views === "number" ? views : (view_count ?? 0);
+  const [displayViews, setDisplayViews] = useState(baseViews);
+  const authorSafe = author || 'Ẩn danh';
+  const authorInitial = authorSafe.charAt(0).toUpperCase();
+  const fallbackCover = 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&h=600&fit=crop';
+  const displayImage = image || (!video ? fallbackCover : '');
+  const displayCategory = category || 'Tất cả';
 
   useEffect(() => {
     if (isHovered) {
@@ -507,9 +847,9 @@ const NewsArticle = ({ title, category, excerpt, author, date, image, video, vie
       };
       requestAnimationFrame(animate);
     } else {
-        setDisplayViews(views);
+        setDisplayViews(baseViews);
     }
-  }, [isHovered, views]);
+  }, [isHovered, baseViews]);
 
   return (
     <div
@@ -544,27 +884,27 @@ const NewsArticle = ({ title, category, excerpt, author, date, image, video, vie
         <span style={{ position: 'absolute', top: '24px', right: '24px', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', padding: '4px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '500', border: '1px solid rgba(59, 130, 246, 0.2)', zIndex: 10 }}>Mới</span>
       )}
 
-      {(image || video) && (
+      {(displayImage || video) && (
         <div style={{ width: '100%', height: '200px', borderRadius: '16px', overflow: 'hidden', marginBottom: '20px', background: 'rgba(255, 255, 255, 0.02)', flexShrink: 0, position: 'relative' }}>
           {video ? (
             <video src={video} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted loop playsInline />
           ) : (
-            <img src={image} alt={title} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 600ms cubic-bezier(0.4, 0, 0.2, 1)', transform: isHovered ? 'scale(1.05)' : 'scale(1)' }} />
+            <img src={displayImage} alt={title} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 600ms cubic-bezier(0.4, 0, 0.2, 1)', transform: isHovered ? 'scale(1.05)' : 'scale(1)' }} />
           )}
           {isNew && <span style={{ position: 'absolute', top: '12px', right: '12px', background: 'rgba(17, 24, 39, 0.75)', backdropFilter: 'blur(4px)', color: '#60a5fa', padding: '4px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', border: '1px solid rgba(59, 130, 246, 0.3)', zIndex: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>Mới</span>}
         </div>
       )}
       <div style={{ flex: 1, position: 'relative', zIndex: 1 }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: isHovered ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.1)', color: BRAND.primaryHover, padding: '4px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '500', marginBottom: '12px', border: `1px solid ${BRAND.border}`, transition: 'all 300ms' }}>
-          {getCategoryIcon(category)} {category}
+          {getCategoryIcon(displayCategory)} {displayCategory}
         </div>
         <h3 style={{ fontSize: '20px', fontWeight: '600', color: isHovered ? '#fff' : '#f9fafb', marginBottom: '12px', lineHeight: '1.4', transition: 'color 300ms' }}>{title}</h3>
-        <p style={{ color: isHovered ? '#e2e8f0' : '#9ca3af', fontSize: '14px', lineHeight: '1.4', marginBottom: '16px', transition: 'color 300ms' }}>{excerpt}</p>
+        <p style={{ color: isHovered ? '#e2e8f0' : '#9ca3af', fontSize: '14px', lineHeight: '1.4', marginBottom: '8px', transition: 'color 300ms' }}>{excerpt}</p>
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: isHovered ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(255, 255, 255, 0.05)', marginTop: 'auto', transition: 'border-color 300ms' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: PRIMARY_GRADIENT, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '600', color: '#fff', boxShadow: isHovered ? `0 0 10px ${BRAND.soft}` : 'none', transition: 'box-shadow 300ms' }}>{author[0]}</div>
-          <div><div style={{ fontSize: '13px', color: isHovered ? '#fff' : '#e5e7eb', fontWeight: '500', transition: 'color 300ms' }}>{author}</div><div style={{ fontSize: '12px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}><Calendar size={12} /><span>{date}</span></div></div>
+          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: PRIMARY_GRADIENT, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '600', color: '#fff', boxShadow: isHovered ? `0 0 10px ${BRAND.soft}` : 'none', transition: 'box-shadow 300ms' }}>{authorInitial}</div>
+          <div><div style={{ fontSize: '13px', color: isHovered ? '#fff' : '#e5e7eb', fontWeight: '500', transition: 'color 300ms' }}>{authorSafe}</div><div style={{ fontSize: '12px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}><Calendar size={12} /><span>{formatDate(created_at || date)}</span></div></div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: isHovered ? BRAND.primaryHover : '#6b7280', fontSize: '13px', transition: 'color 300ms' }}><TrendingUp size={14} /><span>{displayViews.toLocaleString()}</span></div>
       </div>
@@ -574,22 +914,160 @@ const NewsArticle = ({ title, category, excerpt, author, date, image, video, vie
 
 // 7. Article Detail Component (DEPENDS ON NewsArticle)
 // Updated to include Admin Controls
-const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateArticle, isAdmin, onDeleteArticle, onDeleteComment }) => {
+const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateArticle, isAdmin, onDeleteArticle, onDeleteComment, currentUser, currentAvatar }) => {
   const [copied, setCopied] = useState(false);
   const [likes, setLikes] = useState(article.likes || 0);
+  const [likeCount, setLikeCount] = useState(0);
   const [dislikes, setDislikes] = useState(article.dislikes || 0);
   const [views, setViews] = useState(article.views || 0);
-  const [userAction, setUserAction] = useState(null); 
+  const [userDisliked, setUserDisliked] = useState(false);
+  const [userLiked, setUserLiked] = useState(false);
+  const [likePending, setLikePending] = useState(false);
+  const [comments, setComments] = useState([]);
+  const [commentsLoading, setCommentsLoading] = useState(true);
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [toast, setToast] = useState(null);
+  const lastCommentTimeRef = useRef(0);
+  const lastCommentTextRef = useRef('');
+  const dislikeStorageKey = 'eightDucksDislikes';
+  const COMMENT_COOLDOWN_MS = 8000;
+  const toastTimerRef = useRef(null);
+  const fallbackCover = 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&h=600&fit=crop';
+  const displayAuthor = article.author || currentUser || 'Ẩn danh';
+  const articleCategory = article.category || 'Tất cả';
+  const coverImage = article.image || (!article.video ? fallbackCover : '');
 
-  useEffect(() => { 
-    window.scrollTo({ top: 0, behavior: 'smooth' }); 
-    setLikes(article.likes || 0); 
-    setDislikes(article.dislikes || 0); 
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 2500);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setLikes(article.likes || 0);
+    setLikeCount(0);
+    setUserLiked(false);
+    setDislikes(article.dislikes || 0);
     setViews(article.views || 0);
-    setUserAction(null); 
+    setComments([]);
+    setUserDisliked(false);
+  }, [article.id]);
+
+  useEffect(() => {
+    try {
+      if (typeof window === 'undefined') return;
+      const raw = localStorage.getItem(dislikeStorageKey);
+      const saved = raw ? JSON.parse(raw) : [];
+      const disliked = saved.includes(String(article.id));
+      setUserDisliked(disliked);
+    } catch (err) {
+      console.error('Failed to load local dislikes', err);
+    }
   }, [article.id]);
 
   const readingMinutes = calculateReadingTime(article);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadComments = async () => {
+      setCommentsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("comments")
+          .select("*")
+          .eq("post_id", article.id)
+          .order("created_at", { ascending: false });
+        if (!mounted) return;
+        if (error) throw error;
+        const normalized = (data || []).map((c) => {
+          const baseAvatar = sanitizeMediaUrl(c.avatar || c.author_avatar || '');
+          const selfAvatar = (c.author === currentUser || c.user_name === currentUser) ? sanitizeMediaUrl(currentAvatar) : '';
+          return { ...c, avatar: baseAvatar || selfAvatar || '' };
+        });
+        setComments(normalized);
+      } catch (err) {
+        console.error(err);
+        if (mounted) setComments([]);
+      } finally {
+        if (mounted) setCommentsLoading(false);
+      }
+    };
+    loadComments();
+    return () => { mounted = false; };
+  }, [article.id]);
+
+  // Increment view count when opening article
+  useEffect(() => {
+    let alive = true;
+    const bumpView = async () => {
+      try {
+        if (!article?.id || !supabase) return;
+        // Try RPC first; if not exists, fallback to update
+        let newCount = null;
+        const rpcRes = await supabase.rpc("increment_view_count", { post_id: article.id });
+        if (!rpcRes.error && typeof rpcRes.data === "number") {
+          newCount = rpcRes.data;
+        } else {
+          const current = article.view_count ?? article.views ?? 0;
+          const { data, error } = await supabase
+            .from("posts")
+            .update({ view_count: current + 1 })
+            .eq("id", article.id)
+            .select("view_count")
+            .single();
+          if (error) throw error;
+          newCount = data?.view_count ?? current + 1;
+        }
+        if (alive && typeof newCount === "number") {
+          onUpdateArticle?.({ ...article, view_count: newCount });
+          setViews(newCount);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    bumpView();
+    return () => { alive = false; };
+  }, [article.id]);
+
+  // Load likes count + user liked
+  useEffect(() => {
+    let mounted = true;
+    const loadLikes = async () => {
+      try {
+        const { count, error } = await supabase
+          .from("likes")
+          .select("*", { count: "exact", head: true })
+          .eq("post_id", article.id);
+        if (error) throw error;
+        if (mounted) setLikeCount(count || 0);
+      } catch (err) {
+        console.error(err);
+        if (mounted) setLikeCount(0);
+      }
+      try {
+        if (!currentUser) { if (mounted) setUserLiked(false); return; }
+        const { data } = await supabase
+          .from("likes")
+          .select("id")
+          .eq("post_id", article.id)
+          .eq("user_name", currentUser)
+          .maybeSingle(); // tolerate no row without 406
+        if (mounted) setUserLiked(!!data);
+      } catch (err) {
+        if (mounted) setUserLiked(false);
+      }
+    };
+    loadLikes();
+    return () => { mounted = false; };
+  }, [article.id, currentUser]);
 
   const handleCopyLink = () => {
     try {
@@ -608,46 +1086,113 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
     if (navigator.clipboard) { navigator.clipboard.writeText(window.location.href).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(err => { console.error(err); alert("Không thể sao chép liên kết."); }); }
   };
 
-  const handleLike = () => {
-    let newLikes = likes;
-    let newDislikes = dislikes;
-    let newAction = userAction;
-
-    if (userAction === 'like') { 
-        newLikes -= 1; 
-        newAction = null; 
-    } else { 
-        newLikes += 1; 
-        if (userAction === 'dislike') newDislikes -= 1; 
-        newAction = 'like'; 
+  const handleLike = async () => {
+    const name = currentUser || 'Khách';
+    if (likePending) return;
+    if (!supabase) {
+      showToast('Chưa kết nối database.', 'error');
+      return;
     }
-    setLikes(newLikes);
-    setDislikes(newDislikes);
-    setUserAction(newAction);
-    
-    // Update parent state
-    onUpdateArticle({ ...article, likes: newLikes, dislikes: newDislikes });
+    const nextLiked = !userLiked;
+    setLikePending(true);
+    setUserLiked(nextLiked);
+    if (nextLiked && userDisliked) {
+      setUserDisliked(false);
+      persistDislike(false);
+    }
+    setLikeCount((prev) => Math.max(0, prev + (nextLiked ? 1 : -1)));
+    try {
+      if (nextLiked) {
+        await supabase.from("likes").insert({
+          post_id: article.id,
+          user_name: name
+        });
+      } else {
+        const { data } = await supabase
+          .from("likes")
+          .select("id")
+          .eq("post_id", article.id)
+          .eq("user_name", name)
+          .maybeSingle(); // tolerate no row without 406
+        if (data) {
+          await supabase.from("likes").delete().eq("id", data.id);
+        }
+      }
+      const { count } = await supabase
+        .from("likes")
+        .select("*", { count: "exact", head: true })
+        .eq("post_id", article.id);
+      setLikeCount(count || 0);
+      const { data } = await supabase
+        .from("likes")
+        .select("id")
+        .eq("post_id", article.id)
+        .eq("user_name", name)
+        .maybeSingle(); // tolerate no row without 406
+      setUserLiked(!!data);
+    } catch (err) {
+      console.error(err);
+      setUserLiked((prev) => !prev);
+      setLikeCount((prev) => Math.max(prev + (nextLiked ? -1 : 1), 0));
+    } finally {
+      setLikePending(false);
+    }
   };
 
-  const handleDislike = () => {
-    let newLikes = likes;
-    let newDislikes = dislikes;
-    let newAction = userAction;
+  const persistDislike = (next) => {
+    try {
+      if (typeof window === 'undefined') return;
+      const raw = localStorage.getItem(dislikeStorageKey);
+      const saved = raw ? JSON.parse(raw) : [];
+      const updated = next
+        ? Array.from(new Set([...saved, String(article.id)]))
+        : saved.filter((id) => id !== String(article.id));
+      localStorage.setItem(dislikeStorageKey, JSON.stringify(updated));
+    } catch (err) {
+      console.error('Failed to persist dislike', err);
+    }
+  };
 
-      if (userAction === 'dislike') { 
-          newDislikes -= 1; 
-          newAction = null; 
-      } else { 
-          newDislikes += 1; 
-          if (userAction === 'like') newLikes -= 1; 
-          newAction = 'dislike'; 
+  const handleDislike = async () => {
+    if (likePending) return;
+    if (!supabase) {
+      showToast('Chưa kết nối database.', 'error');
+      return;
+    }
+    const next = !userDisliked;
+    setUserDisliked(next);
+    persistDislike(next);
+
+    if (next && userLiked) {
+      // Force unlike first to avoid dual state
+      const name = currentUser || 'Khách';
+      setUserLiked(false);
+      setLikeCount((prev) => Math.max(prev - 1, 0));
+      setLikePending(true);
+      try {
+        const { data } = await supabase
+          .from("likes")
+          .select("id")
+          .eq("post_id", article.id)
+          .eq("user_name", name)
+          .single();
+        if (data) {
+          await supabase.from("likes").delete().eq("id", data.id);
+        }
+        const { count } = await supabase
+          .from("likes")
+          .select("*", { count: "exact", head: true })
+          .eq("post_id", article.id);
+        setLikeCount(count || 0);
+      } catch (err) {
+        console.error(err);
+        setUserLiked(true);
+      } finally {
+        setLikePending(false);
       }
-      setLikes(newLikes);
-      setDislikes(newDislikes);
-      setUserAction(newAction);
+    }
 
-      // Update parent state
-      onUpdateArticle({ ...article, likes: newLikes, dislikes: newDislikes });
+    showToast(next ? 'Bạn đã dislike bài viết (lưu trên thiết bị).' : 'Đã bỏ dislike.', 'success');
   };
 
   // Admin handlers to directly set values
@@ -660,16 +1205,82 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
     onUpdateArticle({ ...article, [field]: newValue });
   };
 
-  const handleAddComment = (text) => {
-      const newComment = { id: Date.now(), user: "Bạn", avatar: "B", text: text, time: "Vừa xong" };
-      const updatedArticle = { ...article, comments: [newComment, ...(article.comments || [])] };
-      onUpdateArticle(updatedArticle);
+  const handleAddComment = async (content) => {
+    const text = content?.trim();
+    if (!text) return false;
+    if (!supabase) { showToast('Chưa kết nối database.', 'error'); return false; }
+    const postId = article?.id;
+    if (!postId) return false;
+    const authorName = currentUser || 'Ẩn danh';
+    const cleanAvatar = sanitizeMediaUrl(currentAvatar);
+
+    if (handleAddComment._pending) return false;
+    handleAddComment._pending = true;
+    setCommentSubmitting(true);
+
+    const tempId = `tmp-${Date.now()}`;
+    const optimisticComment = {
+      id: tempId,
+      post_id: postId,
+      author: authorName,
+      content: text,
+      avatar: cleanAvatar || '',
+      created_at: new Date().toISOString(),
+      __optimistic: true,
+    };
+
+    setComments((prev) => [optimisticComment, ...(prev || [])]);
+
+    try {
+      const payload = { post_id: postId, author: authorName, content: text, avatar: cleanAvatar || null };
+      let insertRes = await supabase
+        .from('comments')
+        .insert([payload])
+        .select('*')
+        .single();
+
+      const shouldRetryAvatar =
+        insertRes.error &&
+        ((insertRes.error.code && ['PGRST204', '42703'].includes(insertRes.error.code)) ||
+         (insertRes.error.message || '').toLowerCase().includes('avatar'));
+
+      if (shouldRetryAvatar) {
+        insertRes = await supabase
+          .from('comments')
+          .insert([{ post_id: postId, author: authorName, content: text }])
+          .select('*')
+          .single();
+      }
+
+      if (insertRes.error) throw insertRes.error;
+      const saved = insertRes.data ? { ...insertRes.data, avatar: sanitizeMediaUrl(insertRes.data.avatar) || cleanAvatar || '' } : null;
+      if (!saved) throw new Error('Missing comment data');
+
+      setComments((prev) =>
+        prev.map((c) => (c.id === tempId ? saved : c))
+      );
+      showToast('Gửi bình luận thành công!', 'success');
+      return true;
+    } catch (err) {
+      console.error(err);
+      setComments((prev) => prev.filter((c) => c.id !== tempId));
+      showToast('Không gửi được bình luận, vui lòng thử lại.', 'error');
+      return false;
+    } finally {
+      setCommentSubmitting(false);
+      handleAddComment._pending = false;
+    }
   };
 
-  // Helper to delete comment specifically for this article
-  const handleDeleteComment = (commentId) => {
-      const updatedComments = (article.comments || []).filter(c => c.id !== commentId);
-      onUpdateArticle({ ...article, comments: updatedComments });
+  const handleDeleteComment = async (commentId) => {
+      try {
+        const { error } = await supabase.from("comments").delete().eq("id", commentId);
+        if (error) throw error;
+        setComments((prev) => (prev || []).filter(c => c.id !== commentId));
+      } catch (err) {
+        console.error(err);
+        alert("Không xóa được bình luận, thử lại sau.");
+      }
   };
 
   const relatedArticles = allArticles.filter(a => a.id !== article.id).slice(0, 2);
@@ -711,23 +1322,23 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
 
       <FadeInSection>
         <div style={{ marginBottom: '32px' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(147, 51, 234, 0.15)', color: BRAND.primaryHover, padding: '6px 16px', borderRadius: '20px', fontSize: '14px', fontWeight: '600', marginBottom: '16px', border: `1px solid ${BRAND.border}` }}>{getCategoryIcon(article.category)} {article.category}</div>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(147, 51, 234, 0.15)', color: BRAND.primaryHover, padding: '6px 16px', borderRadius: '20px', fontSize: '14px', fontWeight: '600', marginBottom: '16px', border: `1px solid ${BRAND.border}` }}>{getCategoryIcon(articleCategory)} {articleCategory}</div>
           <h1 style={{ fontSize: 'clamp(28px, 6vw, 40px)', fontWeight: '700', color: '#ffffff', lineHeight: '1.25', marginBottom: '18px' }}>{article.title}</h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: '24px', color: '#9ca3af', fontSize: '14px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><User size={16} color="#a78bfa" /><span style={{ color: '#e5e7eb', fontWeight: '500' }}>{article.author}</span></div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Calendar size={16} color="#a78bfa" /><span>{article.date}</span></div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Clock size={16} color="#a78bfa" /><span>{readingMinutes} phút đọc</span></div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><TrendingUp size={16} color="#a78bfa" /><span>{views.toLocaleString()} lượt xem</span></div>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><User size={16} color="#a78bfa" /><span style={{ color: '#e5e7eb', fontWeight: '500' }}>{displayAuthor}</span></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Calendar size={16} color="#a78bfa" /><span>{formatDate(article.created_at || article.date)}</span></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Clock size={16} color="#a78bfa" /><span>{readingMinutes} phút đọc</span></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><TrendingUp size={16} color="#a78bfa" /><span>{views.toLocaleString()} lượt xem</span></div>
+      </div>
         </div>
 
         <div style={{ marginBottom: '40px' }}>
-          {(article.image || article.video) && (
+          {(coverImage || article.video) && (
             <div style={{ width: '100%', height: 'clamp(240px, 45vw, 500px)', borderRadius: '24px', overflow: 'hidden', marginBottom: '20px', boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)', border: '1px solid rgba(255, 255, 255, 0.1)', background: '#000' }}>
               {article.video ? (
                 <video src={article.video} controls style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
               ) : (
-                <img src={article.image} alt={article.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={coverImage} alt={article.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               )}
             </div>
           )}
@@ -743,11 +1354,11 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
               </button>
             </div>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <button onClick={handleLike} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: userAction === 'like' ? 'rgba(147, 51, 234, 0.18)' : 'transparent', border: `1px solid ${userAction === 'like' ? BRAND.primary : 'rgba(255,255,255,0.1)'}`, borderRadius: '20px', color: userAction === 'like' ? BRAND.primaryHover : '#9ca3af', cursor: 'pointer', transition: 'all 0.2s' }}>
-                    <ThumbsUp size={18} fill={userAction === 'like' ? "currentColor" : "none"} /> <span>{likes}</span>
+                <button onClick={handleLike} disabled={likePending} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: userLiked ? 'rgba(34, 197, 94, 0.18)' : 'transparent', border: `1px solid ${userLiked ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.1)'}`, borderRadius: '20px', color: userLiked ? '#22c55e' : '#9ca3af', cursor: likePending ? 'not-allowed' : 'pointer', transition: 'all 0.2s', opacity: likePending ? 0.65 : 1 }}>
+                    <ThumbsUp size={18} fill={userLiked ? "currentColor" : "none"} /> <span>{likeCount}</span>
                 </button>
-                <button onClick={handleDislike} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: userAction === 'dislike' ? 'rgba(239, 68, 68, 0.15)' : 'transparent', border: `1px solid ${userAction === 'dislike' ? '#ef4444' : 'rgba(255,255,255,0.1)'}`, borderRadius: '20px', color: userAction === 'dislike' ? '#f87171' : '#9ca3af', cursor: 'pointer', transition: 'all 0.2s' }}>
-                    <ThumbsDown size={18} fill={userAction === 'dislike' ? "currentColor" : "none"} />
+                <button onClick={handleDislike} disabled={likePending} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: userDisliked ? 'rgba(239, 68, 68, 0.15)' : 'transparent', border: `1px solid ${userDisliked ? '#ef4444' : 'rgba(255,255,255,0.1)'}`, borderRadius: '20px', color: userDisliked ? '#f87171' : '#9ca3af', cursor: likePending ? 'not-allowed' : 'pointer', transition: 'all 0.2s', opacity: likePending ? 0.65 : 1 }}>
+                    <ThumbsDown size={18} fill={userDisliked ? "currentColor" : "none"} />
                 </button>
             </div>
           </div>
@@ -767,7 +1378,18 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
       </FadeInSection>
        
       <FadeInSection delay={100}><SurveySection /></FadeInSection>
-      <FadeInSection delay={200}><CommentSection comments={article.comments || []} onAddComment={handleAddComment} isAdmin={isAdmin} onDeleteComment={handleDeleteComment} /></FadeInSection>
+      <FadeInSection delay={200}>
+        <CommentSection
+          comments={comments}
+          onAddComment={handleAddComment}
+          isAdmin={isAdmin}
+          onDeleteComment={handleDeleteComment}
+          isLoading={commentsLoading}
+          isSubmitting={commentSubmitting}
+          currentUser={currentUser}
+          currentAvatar={currentAvatar}
+        />
+      </FadeInSection>
 
       <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', paddingTop: '40px', marginTop: '60px' }}>
         <h3 style={{ fontSize: '28px', fontWeight: '700', color: '#f9fafb', marginBottom: '32px', display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -780,6 +1402,101 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
              </FadeInSection>
           ))}
         </div>
+      </div>
+      {toast && (
+        <div style={{ position: 'fixed', right: '20px', bottom: '20px', padding: '12px 16px', background: toast.type === 'success' ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)', border: `1px solid ${toast.type === 'success' ? 'rgba(34,197,94,0.4)' : 'rgba(239,68,68,0.4)'}`, color: '#e5e7eb', borderRadius: '12px', boxShadow: '0 10px 30px rgba(0,0,0,0.45)', zIndex: 20000, backdropFilter: 'blur(10px)' }}>
+          {toast.message}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const ArticleDetailRoute = ({ posts, ambientIntensity, scrollY, currentUser, currentAvatar, onSyncArticleViews }) => {
+  const { id: paramId } = useParams();
+  const navigate = useNavigate();
+  const queryId = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('id') : null;
+  const id = paramId || queryId;
+  const [article, setArticle] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    setLoading(true);
+    const load = async () => {
+      try {
+        if (!id) throw new Error("missing id");
+        const baseQuery = supabase.from("posts").select("*");
+        let res;
+        if (typeof baseQuery.eq === "function") {
+          res = await baseQuery.eq("id", id).single();
+        } else {
+          const { data, error } = await supabase.from("posts").select("*");
+          if (error) throw error;
+          const match = (data || []).find((row) => String(row.id) === String(id)) || null;
+          res = { data: match, error: match ? null : { message: "not found" } };
+        }
+        if (!mounted) return;
+        if (!res.error && res.data) {
+          setArticle(normalizePost(res.data));
+          return;
+        }
+        // Fallback: try find from current state (stub/local dev)
+        const fallback = (posts || []).find((p) => String(p.id) === String(id)) || null;
+        setArticle(fallback ? normalizePost(fallback) : null);
+      } catch (err) {
+        if (!mounted) return;
+        console.error(err);
+        const fallback = (posts || []).find((p) => String(p.id) === String(id)) || null;
+        setArticle(fallback ? normalizePost(fallback) : null);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    load();
+    return () => { mounted = false; };
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#050505', color: '#f9fafb', position: 'relative' }}>
+        <AmbientBackground ambientIntensity={ambientIntensity} scrollY={scrollY} />
+        <div style={{ padding: '40px', position: 'relative', zIndex: 2 }}>Đang tải bài viết...</div>
+      </div>
+    );
+  }
+
+  if (!article) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#050505', color: '#f9fafb', position: 'relative' }}>
+        <AmbientBackground ambientIntensity={ambientIntensity} scrollY={scrollY} />
+        <div style={{ padding: '40px', position: 'relative', zIndex: 2 }}>Không tìm thấy bài viết</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#050505', color: '#f9fafb', position: 'relative', overflowX: 'hidden' }}>
+      <AmbientBackground ambientIntensity={ambientIntensity} scrollY={scrollY} />
+      <div style={{ position: 'relative', zIndex: 2 }}>
+        <ArticleDetail
+          article={article}
+          onBack={() => { navigate('/'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+          allArticles={posts}
+          onArticleClick={(next) => navigate(`/post/${next.id}`)}
+          onUpdateArticle={(updated) => { 
+            setArticle(updated); /* keep detail in sync */ 
+            if (updated?.id && onSyncArticleViews) {
+              const nextViews = updated.view_count ?? updated.views ?? 0;
+              onSyncArticleViews(updated.id, nextViews);
+            }
+          }}
+          isAdmin={false}
+          onDeleteArticle={() => {}}
+          onDeleteComment={() => {}}
+          currentUser={currentUser}
+          currentAvatar={currentAvatar}
+        />
       </div>
     </div>
   );
@@ -985,7 +1702,7 @@ const WelcomeModal = ({ isOpen, initialName = '', onSubmit }) => {
 
   if (!isOpen) return null;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const trimmed = name.trim();
     if (!trimmed) return;
     onSubmit(trimmed);
@@ -1101,7 +1818,25 @@ const CreatePostModal = ({ isOpen, onClose, onPost }) => {
       }
   };
 
-  const syncContent = () => { if (editorRef.current) setContent(editorRef.current.innerHTML); };
+  const normalizeEditorDom = () => {
+    if (!editorRef.current) return;
+    if (hasInvalidEditorDom(editorRef.current)) {
+      const blocks = extractBlocksFromHtml(editorRef.current.innerHTML, editorRef.current.textContent || '');
+      editorRef.current.innerHTML = '';
+      blocks.forEach((b) => editorRef.current.appendChild(b));
+    }
+  };
+
+  const syncContent = () => {
+    if (!editorRef.current) return;
+    setContent(editorRef.current.innerHTML);
+  };
+
+  const normalizeAndSyncContent = () => {
+    if (!editorRef.current) return;
+    normalizeEditorDom();
+    setContent(editorRef.current.innerHTML);
+  };
 
   const applyCommand = (command, value = null) => {
     if (!editorRef.current) return;
@@ -1128,21 +1863,68 @@ const CreatePostModal = ({ isOpen, onClose, onPost }) => {
     refreshFormatState();
   };
 
-  const handleInlineImageInsert = (chosenFile) => {
+  const insertImageBlock = ({ src, name = 'image', caption = '', focusCaption = true } = {}) => {
+    if (!editorRef.current || !src) return;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'image-block';
+    const span = document.createElement('span');
+    span.className = 'inline-image-placeholder';
+    span.setAttribute('contenteditable', 'false');
+    span.setAttribute('data-img', src);
+    span.textContent = name || 'image';
+
+    const captionBlock = document.createElement('div');
+    captionBlock.className = 'image-caption-block';
+    captionBlock.setAttribute('contenteditable', 'true');
+    captionBlock.setAttribute('data-placeholder', 'Nh\u1eadp ch\u00fa th\u00edch \u1ea3nh...');
+    captionBlock.textContent = caption || '';
+
+    const breakBlock = document.createElement('p');
+    breakBlock.innerHTML = '<br/>';
+
+    const sel = window.getSelection();
+    const range = sel && sel.rangeCount ? sel.getRangeAt(0) : null;
+    wrapper.append(span, captionBlock, breakBlock);
+
+    const anchorEl = sel?.anchorNode?.nodeType === Node.ELEMENT_NODE
+      ? sel.anchorNode
+      : sel?.anchorNode?.parentElement;
+    const parentImageBlock = anchorEl?.closest?.('.image-block');
+
+    if (parentImageBlock) {
+      parentImageBlock.insertAdjacentElement('afterend', wrapper);
+    } else if (range) {
+      range.deleteContents();
+      range.insertNode(wrapper);
+    } else {
+      editorRef.current.append(wrapper);
+    }
+
+    if (sel) {
+      const nextRange = document.createRange();
+      if (focusCaption) nextRange.setStart(captionBlock, 0);
+      else nextRange.setStart(breakBlock, 0);
+      nextRange.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(nextRange);
+    }
+
+    syncContent();
+    refreshFormatState();
+  };
+
+  const handleInlineImageInsert = async (chosenFile) => {
     if (!chosenFile) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const dataUrl = ev.target.result;
+    try {
+      const url = await uploadFile('content', chosenFile);
       const fileName = chosenFile.name || 'image.png';
-      if (editorRef.current) {
-        editorRef.current.focus();
-        const html = `<span class="inline-image-placeholder" data-img="${dataUrl}">\\${fileName}\\</span><p><br/></p>`;
-        document.execCommand('insertHTML', false, html);
-        syncContent();
-        refreshFormatState();
+      if (url) {
+        insertImageBlock({ src: url, name: fileName, caption: '', focusCaption: true });
       }
-    };
-    reader.readAsDataURL(chosenFile);
+    } catch (err) {
+      console.error('Upload inline image failed', err);
+      alert('Không upload được ảnh, vui lòng thử lại.');
+    }
   };
 
   const handleInlineImagePick = (e) => {
@@ -1151,20 +1933,352 @@ const CreatePostModal = ({ isOpen, onClose, onPost }) => {
     e.target.value = '';
   };
 
-  const sanitizeInlineImages = (html) => {
-    return html.replace(/<img[^>]*src=["']([^"']+)["'][^>]*>/gi, (match, src) => {
-      const name = (src.split('/').pop() || 'image').split('?')[0] || 'image';
-      return `<span class="inline-image-placeholder" data-img="${src}">\\${name}\\</span>`;
+  const buildFigureBlock = (src, caption = '') => {
+    const fig = document.createElement('figure');
+    fig.className = 'article-figure';
+    fig.setAttribute('data-img', src);
+    const img = document.createElement('img');
+    img.src = src;
+    img.alt = '';
+    const cap = document.createElement('figcaption');
+    cap.setAttribute('contenteditable', 'true');
+    cap.className = 'image-caption';
+    cap.setAttribute('data-placeholder', 'Nh\u1eadp ch\u00fa th\u00edch \u1ea3nh...');
+    cap.textContent = caption || '';
+    fig.append(img, cap);
+    return fig;
+  };
+
+  const buildParagraphsFromText = (text = '') => {
+    const blocks = [];
+    const normalized = String(text).replace(/\r\n?/g, '\n');
+    const parts = normalized.split(/\n{2,}/);
+    parts.forEach((part) => {
+      const lines = part.split('\n');
+      const p = document.createElement('p');
+      lines.forEach((line, idx) => {
+        const cleaned = line.replace(/[ \t]+/g, ' ');
+        if (cleaned) p.appendChild(document.createTextNode(cleaned));
+        if (idx < lines.length - 1) p.appendChild(document.createElement('br'));
+      });
+      if (p.textContent || p.querySelector('br')) blocks.push(p);
     });
+    return blocks;
+  };
+
+  const extractBlocksFromHtml = (html = '', fallbackText = '') => {
+    const blocks = [];
+    if (!html) return buildParagraphsFromText(fallbackText);
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll('script,style,iframe,noscript,meta').forEach((n) => n.remove());
+
+    const appendInline = (node, parent) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const parts = node.textContent.split('\n');
+        parts.forEach((part, idx) => {
+          if (part) parent.appendChild(document.createTextNode(part));
+          if (idx < parts.length - 1) parent.appendChild(document.createElement('br'));
+        });
+        return;
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE) return;
+      const tag = node.tagName;
+      if (tag === 'BR') {
+        parent.appendChild(document.createElement('br'));
+        return;
+      }
+      if (tag === 'SPAN' && node.classList.contains('inline-image-placeholder')) {
+        const src = sanitizeMediaUrl(node.getAttribute('data-img') || '');
+        if (!src) return;
+        const name = node.textContent?.trim() || 'image';
+        const span = document.createElement('span');
+        span.className = 'inline-image-placeholder';
+        span.setAttribute('contenteditable', 'false');
+        span.setAttribute('data-img', src);
+        span.textContent = name;
+        parent.appendChild(span);
+        return;
+      }
+      if (tag === 'DIV' && node.classList.contains('image-caption-block')) {
+        const caption = document.createElement('div');
+        caption.className = 'image-caption-block';
+        caption.setAttribute('contenteditable', 'true');
+        caption.setAttribute('data-placeholder', 'Nhập chú thích ảnh...');
+        caption.textContent = node.textContent || '';
+        parent.appendChild(caption);
+        return;
+      }
+      if (tag === 'A') {
+        const href = node.getAttribute('href') || '';
+        if (!/^https?:\/\//i.test(href)) {
+          Array.from(node.childNodes).forEach((child) => appendInline(child, parent));
+          return;
+        }
+        const a = document.createElement('a');
+        a.setAttribute('href', href);
+        a.setAttribute('target', '_blank');
+        a.setAttribute('rel', 'noopener noreferrer');
+        Array.from(node.childNodes).forEach((child) => appendInline(child, a));
+        parent.appendChild(a);
+        return;
+      }
+      if (['B', 'STRONG', 'I', 'EM', 'U'].includes(tag)) {
+        const el = document.createElement(tag.toLowerCase());
+        Array.from(node.childNodes).forEach((child) => appendInline(child, el));
+        parent.appendChild(el);
+        return;
+      }
+      Array.from(node.childNodes).forEach((child) => appendInline(child, parent));
+    };
+
+    const pushParagraphText = (text) => {
+      if (!text) return;
+      buildParagraphsFromText(text).forEach((p) => blocks.push(p));
+    };
+
+    const handleImage = (img, caption = '') => {
+      const src = sanitizeMediaUrl(img.getAttribute('src') || '');
+      if (src) blocks.push(buildFigureBlock(src, caption));
+    };
+
+    const handleList = (node) => {
+      const list = document.createElement(node.tagName.toLowerCase());
+      Array.from(node.children).forEach((child) => {
+        if (child.tagName !== 'LI') return;
+        const li = document.createElement('li');
+        Array.from(child.childNodes).forEach((c) => {
+          if (c.nodeType === Node.ELEMENT_NODE && (c.tagName === 'UL' || c.tagName === 'OL')) {
+            const nested = handleList(c);
+            if (nested) li.appendChild(nested);
+          } else {
+            appendInline(c, li);
+          }
+        });
+        if (li.textContent || li.querySelector('br') || li.querySelector('ul,ol')) list.appendChild(li);
+      });
+      if (list.childNodes.length) blocks.push(list);
+    };
+
+    const handleTable = (node) => {
+      const table = document.createElement('table');
+      node.querySelectorAll('tr').forEach((row) => {
+        const tr = document.createElement('tr');
+        row.querySelectorAll('th,td').forEach((cell) => {
+          const td = document.createElement(cell.tagName.toLowerCase());
+          Array.from(cell.childNodes).forEach((c) => appendInline(c, td));
+          if (td.textContent || td.querySelector('br')) tr.appendChild(td);
+        });
+        if (tr.childNodes.length) table.appendChild(tr);
+      });
+      if (table.childNodes.length) blocks.push(table);
+    };
+
+    const walk = (node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        pushParagraphText(node.textContent);
+        return;
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE) return;
+      const tag = node.tagName;
+      if (tag === 'FIGURE') {
+        const img = node.querySelector('img');
+        const caption = node.querySelector('figcaption')?.textContent
+          || img?.getAttribute('alt')
+          || '';
+        if (img) {
+          const src = sanitizeMediaUrl(img.getAttribute('src') || '');
+          if (src) {
+            const span = document.createElement('span');
+            span.className = 'inline-image-placeholder';
+            span.setAttribute('contenteditable', 'false');
+            span.setAttribute('data-img', src);
+            span.textContent = img.getAttribute('alt') || 'image';
+            const p = document.createElement('p');
+            p.appendChild(span);
+            blocks.push(p);
+            const cap = document.createElement('div');
+            cap.className = 'image-caption-block';
+            cap.setAttribute('contenteditable', 'true');
+            cap.setAttribute('data-placeholder', 'Nhập chú thích ảnh...');
+            cap.textContent = caption.trim();
+            blocks.push(cap);
+          }
+        }
+        return;
+      }
+      if (tag === 'IMG') {
+        const src = sanitizeMediaUrl(node.getAttribute('src') || '');
+        if (src) {
+          const caption = node.getAttribute('alt') || '';
+          const span = document.createElement('span');
+          span.className = 'inline-image-placeholder';
+          span.setAttribute('contenteditable', 'false');
+          span.setAttribute('data-img', src);
+          span.textContent = node.getAttribute('alt') || 'image';
+          const p = document.createElement('p');
+          p.appendChild(span);
+          blocks.push(p);
+          const cap = document.createElement('div');
+          cap.className = 'image-caption-block';
+          cap.setAttribute('contenteditable', 'true');
+          cap.setAttribute('data-placeholder', 'Nhập chú thích ảnh...');
+          cap.textContent = caption.trim();
+          blocks.push(cap);
+        }
+        return;
+      }
+      if (tag === 'DIV' && node.classList.contains('image-caption-block')) {
+        const cap = document.createElement('div');
+        cap.className = 'image-caption-block';
+        cap.setAttribute('contenteditable', 'true');
+        cap.setAttribute('data-placeholder', 'Nhập chú thích ảnh...');
+        cap.textContent = node.textContent || '';
+        blocks.push(cap);
+        return;
+      }
+      if (tag === 'P' || tag === 'DIV') {
+        const p = document.createElement('p');
+        Array.from(node.childNodes).forEach((child) => appendInline(child, p));
+        if (p.textContent || p.querySelector('br')) blocks.push(p);
+        return;
+      }
+      if (tag === 'BR') {
+        pushParagraphText('\n\n');
+        return;
+      }
+      if (tag === 'UL' || tag === 'OL') {
+        handleList(node);
+        return;
+      }
+      if (tag === 'TABLE') {
+        handleTable(node);
+        return;
+      }
+      Array.from(node.childNodes).forEach(walk);
+    };
+
+    Array.from(doc.body.childNodes).forEach(walk);
+    return blocks.length ? blocks : buildParagraphsFromText(doc.body.textContent || fallbackText);
+  };
+
+  const insertBlocksAtSelection = (blocks) => {
+    if (!editorRef.current) return;
+    const sel = window.getSelection();
+    const range = sel && sel.rangeCount ? sel.getRangeAt(0) : null;
+    if (!range) {
+      blocks.forEach((b) => editorRef.current.appendChild(b));
+      const last = blocks[blocks.length - 1];
+      if (last && last.tagName === 'FIGURE') {
+        const cap = last.querySelector('figcaption');
+        if (cap) {
+          const r = document.createRange();
+          r.setStart(cap, 0);
+          r.collapse(true);
+          sel.removeAllRanges();
+          sel.addRange(r);
+        }
+      }
+      return;
+    }
+    range.deleteContents();
+    blocks.forEach((block) => {
+      range.insertNode(block);
+      range.setStartAfter(block);
+      range.collapse(true);
+    });
+    const last = blocks[blocks.length - 1];
+    if (last && last.tagName === 'FIGURE') {
+      const cap = last.querySelector('figcaption');
+      if (cap) {
+        const r = document.createRange();
+        r.setStart(cap, 0);
+        r.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(r);
+        return;
+      }
+    }
+    sel.removeAllRanges();
+    sel.addRange(range);
+  };
+
+  const hasInvalidEditorDom = (root) => {
+    if (!root) return false;
+    if (root.querySelector('p img, p figure, span img, div img, figure figure')) return true;
+    if (Array.from(root.childNodes).some((n) => n.nodeType === Node.TEXT_NODE && n.textContent.trim())) return true;
+    if (Array.from(root.querySelectorAll('img')).some((img) => !img.closest('figure'))) return true;
+    if (Array.from(root.querySelectorAll('figure')).some((fig) => !fig.querySelector('figcaption'))) return true;
+    const allowed = new Set(['P', 'FIGURE', 'UL', 'OL', 'TABLE']);
+    return Array.from(root.childNodes).some((n) => {
+      if (n.nodeType !== Node.ELEMENT_NODE) return false;
+      if (allowed.has(n.tagName)) return false;
+      if (n.tagName === 'DIV' && (n.classList.contains('image-block') || n.classList.contains('image-caption-block'))) {
+        return false;
+      }
+      return true;
+    });
+  };
+
+  const sanitizeInlineImages = (html = '') => {
+    if (!html) return '';
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = html;
+
+    // Remove disallowed tags
+    wrapper.querySelectorAll('script,style,iframe,noscript').forEach((n) => n.remove());
+
+    // Normalize figures/images
+    wrapper.querySelectorAll('figure').forEach((fig) => {
+      const img = fig.querySelector('img');
+      if (!img) { fig.remove(); return; }
+      const src = img.getAttribute('src') || '';
+      const alt = img.getAttribute('alt') || '';
+      const captionText = fig.querySelector('figcaption')?.textContent || '';
+      const newFig = document.createElement('figure');
+      newFig.className = 'article-figure';
+      newFig.setAttribute('data-img', src);
+      const newImg = document.createElement('img');
+      newImg.src = src;
+      newImg.alt = alt;
+      const newCap = document.createElement('figcaption');
+      newCap.setAttribute('contenteditable', 'true');
+      newCap.className = 'image-caption';
+      newCap.setAttribute('data-placeholder', 'Nh\u1eadp ch\u00fa th\u00edch \u1ea3nh...');
+      newCap.textContent = captionText;
+      newFig.append(newImg, newCap);
+      fig.replaceWith(newFig);
+    });
+
+    // Images not wrapped -> wrap
+    wrapper.querySelectorAll('img').forEach((img) => {
+      if (img.closest('figure')) return;
+      const src = img.getAttribute('src') || '';
+      const alt = img.getAttribute('alt') || '';
+      const fig = document.createElement('figure');
+      fig.className = 'article-figure';
+      fig.setAttribute('data-img', src);
+      const newImg = document.createElement('img');
+      newImg.src = src;
+      newImg.alt = alt;
+      const cap = document.createElement('figcaption');
+      cap.setAttribute('contenteditable', 'true');
+      cap.className = 'image-caption';
+      cap.setAttribute('data-placeholder', 'Nh\u1eadp ch\u00fa th\u00edch \u1ea3nh...');
+      fig.append(newImg, cap);
+      img.replaceWith(fig);
+    });
+
+    return wrapper.innerHTML;
   };
 
   const handleEditorInput = (e) => {
     const raw = e.currentTarget.innerHTML;
-    const sanitized = sanitizeInlineImages(raw);
-    if (sanitized !== raw && editorRef.current) {
-      editorRef.current.innerHTML = sanitized;
+    const current = editorRef.current ? editorRef.current.innerHTML : raw;
+    const plain = current.replace(/<[^>]*>/g, '').trim();
+    if (!plain && editorRef.current && !editorRef.current.textContent.trim()) {
+      editorRef.current.innerHTML = '';
     }
-    setContent(sanitized);
+    setContent(editorRef.current ? editorRef.current.innerHTML : current);
     refreshFormatState();
   };
 
@@ -1195,21 +2309,61 @@ const CreatePostModal = ({ isOpen, onClose, onPost }) => {
   };
 
   // Handle Post Submission
-  const handleSubmit = () => {
-    const cleanText = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  const handleSubmit = async () => {
+    let contentToSubmit = content;
+    if (editorRef.current) {
+      normalizeAndSyncContent();
+      contentToSubmit = editorRef.current.innerHTML;
+    }
+    const cleanText = contentToSubmit.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     if (!title.trim() || !cleanText) {
       alert("Vui lòng nhập tiêu đề và nội dung bài viết!");
       return;
     }
 
     const isVideo = file && file.type && file.type.startsWith('video');
-    const coverUrl = file ? URL.createObjectURL(file) : 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&h=600&fit=crop';
+    let coverUrl = 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&h=600&fit=crop';
+    if (file) {
+      try {
+        coverUrl = await uploadFile(isVideo ? 'videos' : 'covers', file);
+      } catch (err) {
+        console.error('Upload cover failed', err);
+        alert('Không tải được ảnh/video bìa, vui lòng thử lại.');
+        return;
+      }
+    }
     const excerptText = cleanText.length > 140 ? `${cleanText.substring(0, 140)}...` : cleanText;
 
-    const contentWithImages = content.replace(/<span class="inline-image-placeholder" data-img="([^"]+)">([^<]*)<\/span>/g, (match, url, name) => {
-      const cleanName = name || 'image';
-      return `<img src="${url}" alt="${cleanName}" style="max-width:100%; border-radius:12px; margin: 10px 0;" />`;
-    });
+    const contentWithFigures = (() => {
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = contentToSubmit;
+
+      const placeholders = Array.from(wrapper.querySelectorAll('span.inline-image-placeholder[data-img]'));
+      placeholders.forEach((span) => {
+        const src = span.getAttribute('data-img') || '';
+        if (!src) return;
+        const captionBlock = span.nextElementSibling && span.nextElementSibling.classList.contains('image-caption-block')
+          ? span.nextElementSibling
+          : null;
+        const captionText = captionBlock ? captionBlock.textContent.trim() : '';
+        const fig = document.createElement('figure');
+        fig.className = 'article-figure';
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = span.textContent.trim() || '';
+        const cap = document.createElement('figcaption');
+        cap.textContent = captionText;
+        fig.append(img, cap);
+        if (captionBlock) captionBlock.remove();
+        span.replaceWith(fig);
+      });
+
+      return wrapper.innerHTML;
+    })();
+
+    const contentNormalized = contentWithFigures
+      .replace(/<figcaption[^>]*>/gi, '<figcaption>')
+      .replace(/<figure[^>]*>/gi, '<figure>');
 
     const newPost = {
       id: Date.now(),
@@ -1225,7 +2379,7 @@ const CreatePostModal = ({ isOpen, onClose, onPost }) => {
       dislikes: 0,
       isNew: true, // Mark as new
       comments: [],
-      content: enhanceLinks(contentWithImages)
+      content: enhanceLinks(contentNormalized)
     };
 
     onPost(newPost); // Call parent handler
@@ -1244,8 +2398,10 @@ const CreatePostModal = ({ isOpen, onClose, onPost }) => {
             <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#e4e4e7', marginBottom: '8px' }}>Danh mục</label>
             <select value={category} onChange={(e) => setCategory(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: '#18181b', border: '1px solid #27272a', borderRadius: '8px', color: '#f4f4f5', fontSize: '14px', outline: 'none', transition: 'border 0.2s' }}>
               <option value="Tình cảm tuổi học trò">Tình cảm tuổi học trò</option>
-              <option value="Kí ức tươi đẹp của thanh xuân">Kí ức tươi đẹp của thanh xuân</option>
+              <option value="Ký ức tuổi đẹp của thanh xuân">Ký ức tuổi đẹp của thanh xuân</option>
               <option value="Chia sẻ cảm hứng">Chia sẻ cảm hứng</option>
+              <option value="Góc tâm sự">Góc tâm sự</option>
+              <option value="Chuyện lập mình">Chuyện lập mình</option>
             </select>
           </div>
 
@@ -1259,16 +2415,16 @@ const CreatePostModal = ({ isOpen, onClose, onPost }) => {
             
             {/* WYSIWYG TOOLBAR */}
             <div className="rte-toolbar">
-                <button className={`rte-btn ${formatState.bold ? 'is-active' : ''}`} onClick={() => applyCommand('bold')} title="In ??m"><Bold size={16}/></button>
-                <button className={`rte-btn ${formatState.italic ? 'is-active' : ''}`} onClick={() => applyCommand('italic')} title="Nghi?ng"><Italic size={16}/></button>
-                <button className={`rte-btn ${formatState.underline ? 'is-active' : ''}`} onClick={() => applyCommand('underline')} title="G?ch ch?n"><Underline size={16}/></button>
+                <button className={`rte-btn ${formatState.bold ? 'is-active' : ''}`} onClick={() => applyCommand('bold')} title="In đậm"><Bold size={16}/></button>
+                <button className={`rte-btn ${formatState.italic ? 'is-active' : ''}`} onClick={() => applyCommand('italic')} title="Nghiêng"><Italic size={16}/></button>
+                <button className={`rte-btn ${formatState.underline ? 'is-active' : ''}`} onClick={() => applyCommand('underline')} title="Gạch chân"><Underline size={16}/></button>
                 <div style={{ width: '1px', height: '20px', background: '#3f3f46', margin: '0 4px' }}></div>
-                <button className={`rte-btn ${formatState.ul ? 'is-active' : ''}`} onClick={() => applyCommand('insertUnorderedList')} title="Danh s?ch"><List size={16}/></button>
-                <button className="rte-btn" onClick={() => applyCommand('formatBlock', 'H3')} title="Ti?u ??"><Type size={16}/></button>
-                <button className="rte-btn" onClick={() => applyCommand('removeFormat')} title="X?a ??nh d?ng">Aa0</button>
-                <button className="rte-btn" onClick={handleCreateLink} title="Th?m link"><Link2 size={16}/></button>
-                <button className="rte-btn" onClick={() => inlineImageInputRef.current?.click()} title="Ch?n ?nh t? m?y (hi?n th? t?n)"><ImageIcon size={16}/></button>
-                <button className="rte-btn" onClick={handleInsertTable} title="Th?m b?ng">Table</button>
+                <button className={`rte-btn ${formatState.ul ? 'is-active' : ''}`} onClick={() => applyCommand('insertUnorderedList')} title="Danh sách"><List size={16}/></button>
+                <button className="rte-btn" onClick={() => applyCommand('formatBlock', 'H3')} title="Tiêu đề"><Type size={16}/></button>
+                <button className="rte-btn" onClick={() => applyCommand('removeFormat')} title="Xóa định dạng">Aa0</button>
+                <button className="rte-btn" onClick={handleCreateLink} title="Thêm link"><Link2 size={16}/></button>
+                <button className="rte-btn" onClick={() => inlineImageInputRef.current?.click()} title="Chèn ảnh từ máy (hiển thị tên)"><ImageIcon size={16}/></button>
+                <button className="rte-btn" onClick={handleInsertTable} title="Thêm bảng">Table</button>
             </div>
             <input 
               type="file" 
@@ -1284,6 +2440,107 @@ const CreatePostModal = ({ isOpen, onClose, onPost }) => {
               contentEditable
               onInput={handleEditorInput}
               onKeyUp={refreshFormatState}
+              onBlur={() => {
+                normalizeAndSyncContent();
+                refreshFormatState();
+              }}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter') return;
+                const selection = window.getSelection();
+                const anchorNode = selection?.anchorNode;
+                const captionBlock = anchorNode && anchorNode.nodeType === Node.ELEMENT_NODE
+                  ? anchorNode.closest('.image-caption-block')
+                  : anchorNode?.parentElement?.closest('.image-caption-block');
+                if (!captionBlock) return;
+                if (!selection || !selection.rangeCount) return;
+                const range = selection.getRangeAt(0);
+                const tailRange = range.cloneRange();
+                tailRange.selectNodeContents(captionBlock);
+                tailRange.setStart(range.endContainer, range.endOffset);
+                const atEnd = tailRange.toString().length === 0;
+                const endsWithBreak = /(<br\s*\/?>\s*)$/i.test(captionBlock.innerHTML.trim());
+                if (atEnd && endsWithBreak) {
+                  e.preventDefault();
+                  const p = document.createElement('p');
+                  p.innerHTML = '<br/>';
+                  captionBlock.insertAdjacentElement('afterend', p);
+                  const nextRange = document.createRange();
+                  nextRange.setStart(p, 0);
+                  nextRange.collapse(true);
+                  selection.removeAllRanges();
+                  selection.addRange(nextRange);
+                  syncContent();
+                  refreshFormatState();
+                }
+              }}
+              onPaste={async (e) => {
+                e.preventDefault();
+                try {
+                  const fileList = Array.from(e.clipboardData?.files || []);
+                  const imageFile = fileList.find((file) => file.type && file.type.startsWith('image/'));
+                  if (imageFile) {
+                    const url = await uploadFile('content', imageFile);
+                    if (url) {
+                      insertImageBlock({ src: url, name: imageFile.name || 'image.png', caption: '', focusCaption: true });
+                    }
+                    return;
+                  }
+                  const html = e.clipboardData.getData('text/html');
+                  const text = e.clipboardData.getData('text/plain');
+                  const sanitized = html ? sanitizePasteContent(html) : '';
+                  const blocks = extractBlocksFromHtml(sanitized, text);
+                  const pending = [];
+                  const flushPending = () => {
+                    if (pending.length) {
+                      insertBlocksAtSelection(pending.splice(0, pending.length));
+                    }
+                  };
+                  for (let i = 0; i < blocks.length; i += 1) {
+                    const block = blocks[i];
+                    const placeholder = block.querySelector?.('span.inline-image-placeholder[data-img]');
+                    const isStandalonePlaceholder = block.tagName === 'P' && placeholder && block.children.length === 1;
+                    if (isStandalonePlaceholder) {
+                      flushPending();
+                      const src = placeholder.getAttribute('data-img') || '';
+                      const name = placeholder.textContent?.trim() || 'image';
+                      let captionText = '';
+                      const next = blocks[i + 1];
+                      if (next && next.classList?.contains('image-caption-block')) {
+                        captionText = next.textContent || '';
+                        i += 1;
+                      }
+                      insertImageBlock({ src, name, caption: captionText, focusCaption: false });
+                      continue;
+                    }
+                    pending.push(block);
+                  }
+                  flushPending();
+                } catch (err) {
+                  const text = e.clipboardData.getData('text/plain');
+                  const blocks = buildParagraphsFromText(text);
+                  insertBlocksAtSelection(blocks);
+                }
+                syncContent();
+                refreshFormatState();
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+              }}
+              onDrop={async (e) => {
+                e.preventDefault();
+                const fileList = Array.from(e.dataTransfer?.files || []);
+                const imageFile = fileList.find((file) => file.type && file.type.startsWith('image/'));
+                if (!imageFile) return;
+                try {
+                  const url = await uploadFile('content', imageFile);
+                  if (url) {
+                    insertImageBlock({ src: url, name: imageFile.name || 'image.png', caption: '', focusCaption: true });
+                  }
+                } catch (err) {
+                  console.error('Upload inline image failed', err);
+                  alert('Kh“ng upload du?c ?nh, vui l•ng th? l?i.');
+                }
+              }}
               suppressContentEditableWarning
               data-placeholder="Viết nội dung bài đăng..."
               className="editable"
@@ -1324,6 +2581,8 @@ const CreatePostModal = ({ isOpen, onClose, onPost }) => {
 
 // 9. MAIN APP COMPONENT
 const App = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [mounted, setMounted] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
   const [showCreatePost, setShowCreatePost] = useState(false);
@@ -1338,8 +2597,8 @@ const App = () => {
   const [hoveredCat, setHoveredCat] = useState(null);
   const [hoveredIcon, setHoveredIcon] = useState(null);
 
-  // Articles State for updates - INITIALIZED EMPTY as requested
-  const [articles, setArticles] = useState([]); 
+  // Posts from DB
+  const [posts, setPosts] = useState([]); 
   
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -1359,6 +2618,29 @@ const App = () => {
   const profileMenuRef = useRef(null);
   const avatarIsImage = avatar && (avatar.startsWith('data:') || avatar.startsWith('http'));
   const avatarFallback = username ? username.charAt(0).toUpperCase() : 'B';
+
+  const fetchPosts = async () => {
+    if (!supabase) {
+      console.error("Supabase client missing. Kiểm tra biến môi trường VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY.");
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from("posts")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      // Normalize view fields and strip invalid media blobs
+      setPosts((data || []).map(normalizePost));
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => { setTimeout(() => setMounted(true), 100); }, []);
 
@@ -1381,6 +2663,10 @@ const App = () => {
   }, []);
 
   useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  useEffect(() => {
     const handleClickOutside = (e) => {
       if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
         setProfileMenuOpen(false);
@@ -1394,12 +2680,18 @@ const App = () => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const id = params.get("id");
+    const baseUrl = import.meta.env.BASE_URL || '/';
+    const basePath = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+    const rawPath = window.location.pathname;
+    const normalizedPath = basePath && rawPath.startsWith(basePath)
+      ? rawPath.slice(basePath.length) || '/'
+      : rawPath;
 
-    if (window.location.pathname === "/post" && id) {
-      const found = articles.find(a => String(a.id) === id);
+    if (normalizedPath === "/post" && id) {
+      const found = posts.find(a => String(a.id) === id);
       if (found) setSelectedArticle(found);
     }
-  }, [articles]);
+  }, [posts]);
 
   // Parallax Scroll Effect for Background
   const [scrollY, setScrollY] = useState(0);
@@ -1430,7 +2722,7 @@ const App = () => {
 
   useEffect(() => { if (isSearchOpen && searchInputRef.current) searchInputRef.current.focus(); }, [isSearchOpen]);
 
-  const categories = ['Tất cả', 'Tình cảm tuổi học trò', 'Kí ức thanh xuân', 'Chia sẻ cảm hứng','Góc tâm sự', 'Chuyện lớp mình'];
+  const categories = ['Tất cả', 'Tình cảm tuổi học trò', 'Ký ức thanh xuân', 'Chia sẻ cảm hứng','Góc tâm sự', 'Chuyện lập mình'];
   const navItems = ['Trang chủ', 'Tin tức', 'Video'];
 
   const handleSaveName = (newName) => {
@@ -1483,26 +2775,32 @@ const App = () => {
 
   const handleNavClick = (item) => {
     setActiveNav(item);
+    const target =
+      item === 'Trang chủ' ? 'top' :
+      item === 'Video' ? 'video' :
+      item === 'Tin tức' ? 'articles' : null;
 
-    // If đang xem bài viết, cần "đóng" detail trước rồi mới scroll (DOM section chưa tồn tại ở thời điểm click).
-    if (selectedArticle) {
-      setSelectedArticle(null);
+    const isPostRoute = location.pathname.startsWith('/post');
 
-      if (item === 'Trang chủ') setPendingScrollTarget('top');
-      else if (item === 'Video') setPendingScrollTarget('video');
-      else if (item === 'Tin tức') setPendingScrollTarget('articles');
-
+    if (isPostRoute) {
+      if (target) setPendingScrollTarget(target);
+      navigate('/');
       return;
     }
 
-    if (item === 'Trang chủ') window.scrollTo({ top: 0, behavior: 'smooth' });
-    else if (item === 'Video') document.getElementById('video-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    else if (item === 'Tin tức') document.getElementById('articles-section')?.scrollIntoView({ behavior: 'smooth' });
-  };
+    if (selectedArticle) {
+      setSelectedArticle(null);
+      if (target) setPendingScrollTarget(target);
+      return;
+    }
 
+    if (target === 'top') window.scrollTo({ top: 0, behavior: 'smooth' });
+    else if (target === 'video') document.getElementById('video-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    else if (target === 'articles') document.getElementById('articles-section')?.scrollIntoView({ behavior: 'smooth' });
+  };
   useEffect(() => {
-    if (selectedArticle) return;
     if (!pendingScrollTarget) return;
+    if (location.pathname !== '/') return;
 
     // Chờ render xong rồi mới scroll để tránh null element.
     const run = () => {
@@ -1514,36 +2812,96 @@ const App = () => {
 
     const t = setTimeout(run, 30);
     return () => clearTimeout(t);
-  }, [selectedArticle, pendingScrollTarget]);
+  }, [pendingScrollTarget, location.pathname]);
+
 
 
   const handleMarkAllRead = () => {
     const updatedNotifications = notifications.map(n => ({ ...n, isRead: true }));
     setNotifications(updatedNotifications);
   };
-  
   // Handle creating a new post
-  const handleCreatePost = (newPost) => {
-      setArticles([newPost, ...articles]); // Add to top of list
-      setShowCreatePost(false); // Close modal
+  const handleCreatePost = async (newPost) => {
+    const categoryValue = newPost.category || 'Tất cả';
+    try {
+      if (!supabase) {
+        alert('Chưa cấu hình Supabase. Vui lòng kiểm tra biến môi trường.');
+        return false;
+      }
+      const cleanImage = sanitizeMediaUrl(newPost.image);
+      const cleanVideo = sanitizeMediaUrl(newPost.video);
+      const cleanContent = stripInvalidMediaFromContent(newPost.content || '');
+      const payload = {
+        title: newPost.title,
+        content: cleanContent,
+        excerpt: newPost.excerpt,
+        category: categoryValue,
+        image: cleanImage || null,
+        video: cleanVideo || null,
+        created_at: new Date().toISOString(),
+        author: username || 'Ẩn danh'
+      };
+      const { data, error } = await supabase
+        .from('posts')
+        .insert([payload])
+        .select('*')
+        .single();
+      if (error && error.code == 'PGRST204') {
+        // Retry without missing columns if schema lacks them
+        const minimal = {
+          title: newPost.title,
+          content: cleanContent,
+          created_at: payload.created_at
+        };
+        const retry = await supabase.from('posts').insert([minimal]).select('*').single();
+        if (retry.error) {
+          console.error(retry.error);
+          alert('Không đăng được bài, vui lòng thử lại.');
+          return false;
+        }
+        const inserted = retry.data ? normalizePost({ ...retry.data, category: categoryValue, excerpt: payload.excerpt, image: payload.image, video: payload.video }) : null;
+        if (inserted) setPosts((prev) => [inserted, ...(prev || [])]); else await fetchPosts();
+        setShowCreatePost(false);
+        return true;
+      }
+      if (error) {
+        console.error(error);
+        alert('Không đăng được bài, vui lòng thử lại.');
+        return false;
+      }
+      if (data) {
+        setPosts((prev) => [normalizePost(data), ...(prev || [])]);
+      } else {
+        await fetchPosts();
+      }
+      setShowCreatePost(false);
+      return true;
+    } catch (err) {
+      console.error(err);
+      return false;
+    }
   };
 
   const handleUpdateArticle = (updatedArticle) => {
-      const updatedArticles = articles.map(art => art.id === updatedArticle.id ? updatedArticle : art);
-      setArticles(updatedArticles);
+      const updatedArticles = posts.map(art => art.id === updatedArticle.id ? updatedArticle : art);
+      setPosts(updatedArticles);
       setSelectedArticle(updatedArticle); // Keep current article updated
+  };
+  const handleSyncArticleViews = (id, viewCount) => {
+      setPosts(prev => prev.map(p => p.id === id ? { ...p, view_count: viewCount, views: viewCount } : p));
   };
 
   const handleDeleteArticle = (articleId) => {
-      const updatedArticles = articles.filter(a => a.id !== articleId);
-      setArticles(updatedArticles);
+      const updatedArticles = posts.filter(a => a.id !== articleId);
+      setPosts(updatedArticles);
       setSelectedArticle(null);
-      window.history.pushState({}, "", "/");
+      navigate('/');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
-  const filteredArticles = articles
+  const filteredArticles = posts
   .filter(article => {
     const matchesCategory = selectedCategory === 'Tất cả' || article.category === selectedCategory;
     const matchesSearch = article.title.toLowerCase().includes(searchQuery.toLowerCase()) || article.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
@@ -1551,22 +2909,8 @@ const App = () => {
   })
   .sort((a, b) => (a.isNew === b.isNew ? 0 : a.isNew ? -1 : 1));
 
-  return (
-    <div style={{ minHeight: '100vh', background: '#050505', color: '#f9fafb', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', position: 'relative', overflowX: 'hidden' }}>
-      <style>{GLOBAL_STYLES}</style> {/* Corrected variable name */}
-
-      {/* Ambient Background (luxury, subtle, "breathing") */}
-      <div className="ambient-root" style={{ '--ambient-intensity': String(ambientIntensity) }}>
-        <div className="ambient-hue">
-          <div className="ambient-noise" />
-          <div className="ambient-blob a" style={{ transform: `translateY(${scrollY * 0.06}px)` }} />
-          <div className="ambient-blob b" style={{ transform: `translateY(-${scrollY * 0.05}px)` }} />
-          <div className="ambient-blob c" style={{ transform: `translateY(${scrollY * 0.03}px)` }} />
-          <div className="ambient-vignette" />
-        </div>
-      </div>
-
-      <nav style={{ position: 'sticky', top: 0, zIndex: 9999, background: 'rgba(10, 10, 10, 0.3)', backdropFilter: 'blur(40px)', borderBottom: '1px solid rgba(167, 139, 250, 0.1)', boxShadow: '0 0 30px rgba(167, 139, 250, 0.05)', opacity: mounted ? 1 : 0, transform: mounted ? 'translateY(0)' : 'translateY(-4px)', transition: 'all 800ms cubic-bezier(0.4, 0, 0.2, 1)', overflow: 'visible' }}>
+  const renderNav = () => (
+<nav style={{ position: 'sticky', top: 0, zIndex: 9999, background: 'rgba(10, 10, 10, 0.3)', backdropFilter: 'blur(40px)', borderBottom: '1px solid rgba(167, 139, 250, 0.1)', boxShadow: '0 0 30px rgba(167, 139, 250, 0.05)', opacity: mounted ? 1 : 0, transform: mounted ? 'translateY(0)' : 'translateY(-4px)', transition: 'all 800ms cubic-bezier(0.4, 0, 0.2, 1)', overflow: 'visible' }}>
         <div style={{ width: '100%', padding: 'clamp(12px, 2.5vw, 16px) clamp(14px, 4vw, 40px)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: 0 }}>
             <button
@@ -1591,7 +2935,7 @@ const App = () => {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => { setSelectedArticle(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
               <img src={BRAND.logo} alt="Logo" style={{ width: 'clamp(32px, 7vw, 40px)', height: 'clamp(32px, 7vw, 40px)', borderRadius: '10px', objectFit: 'cover', flexShrink: 0 }} />
-              <div style={{ fontSize: '24px', fontWeight: '700', color: '#f9fafb', letterSpacing: '-0.5px' }}>Eight Ducks</div>
+              <div className="brand-title" style={{ fontSize: '24px', fontWeight: '700', color: '#f9fafb', letterSpacing: '-0.5px' }}>Eight Ducks</div>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
@@ -1626,8 +2970,8 @@ const App = () => {
             </div>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', position: 'relative' }}>
               
-              {/* === CREATE POST BUTTON (VISIBLE TO ALL) === */}
-              <button onClick={() => setShowCreatePost(true)} style={{ padding: '8px 16px', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1))', border: '1px solid rgba(139, 92, 246, 0.2)', borderRadius: '8px', color: '#a78bfa', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'all 300ms', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {/* === CREATE POST BUTTON (DESKTOP) === */}
+              <button className="create-post-btn" onClick={() => setShowCreatePost(true)} style={{ padding: '8px 16px', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1))', border: '1px solid rgba(139, 92, 246, 0.2)', borderRadius: '8px', color: '#a78bfa', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'all 300ms', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Plus size={16} /> <span className="btn-label">Đăng bài</span>
               </button>
               
@@ -1731,6 +3075,13 @@ const App = () => {
                 </button>
               </div>
               <div className="mobile-menu-list">
+                <button
+                  className="mobile-menu-item"
+                  onClick={() => { setShowCreatePost(true); setMobileMenuOpen(false); }}
+                  style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.15), rgba(99,102,241,0.15))', borderColor: 'rgba(168,85,247,0.7)', color: '#d8b4fe', fontWeight: 700, boxShadow: '0 6px 20px rgba(168,85,247,0.25)', borderStyle: 'dashed' }}
+                >
+                  + Đăng bài
+                </button>
                 {navItems.map((item) => (
                   <button
                     key={item}
@@ -1744,41 +3095,34 @@ const App = () => {
                   </button>
                 ))}
               </div>
-              <div className="ambient-controls">
-                <div className="ambient-label">
-                  <span>Đèn nền</span>
-                  <span>{Math.round(ambientIntensity * 100)}%</span>
-                </div>
-                <div className="ambient-range">
-                  <input
-                    type="range"
-                    min="0.2"
-                    max="1.6"
-                    step="0.05"
-                    value={ambientIntensity}
-                    onChange={(e) => setAmbientIntensity(parseFloat(e.target.value))}
-                    aria-label="Ambient intensity"
-                  />
-                </div>
-              </div>
             </div>
           </div>
         )}
 
       </nav>
+  );
+
+const HomeUI = (
+    <div style={{ minHeight: '100vh', background: '#050505', color: '#f9fafb', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', position: 'relative', overflowX: 'hidden' }}>
+
+      {/* Ambient Background (luxury, subtle, "breathing") */}
+      <AmbientBackground ambientIntensity={ambientIntensity} scrollY={scrollY} />
+
+      {renderNav()}
 
       {selectedArticle ? (
-        <ArticleDetail 
-            article={selectedArticle} 
-            onBack={() => { window.history.pushState({}, "", "/"); setSelectedArticle(null); }} 
-            allArticles={articles} 
+        <ArticleDetail
+            article={selectedArticle}
+            onBack={() => { navigate('/'); window.scrollTo({ top: 0, behavior: 'smooth' }); setSelectedArticle(null); }}
+            allArticles={posts}
             onArticleClick={(article) => {
-              window.history.pushState({}, "", `/post?id=${article.id}`);
-              setSelectedArticle(article);
+              navigate(`/post/${article.id}`);
             }}
             onUpdateArticle={handleUpdateArticle}
             isAdmin={isAdmin}
             onDeleteArticle={handleDeleteArticle}
+            currentUser={username}
+            currentAvatar={avatar}
         />
       ) : (
         <>
@@ -1786,10 +3130,10 @@ const App = () => {
             {/* WRAP HERO CONTENT IN FADE-IN SECTION */}
             <FadeInSection>
                 <div style={{ textAlign: 'center', marginBottom: 'clamp(32px, 6vw, 56px)' }}>
-                <h1 style={{ fontSize: 'clamp(40px, 9vw, 72px)', fontWeight: '800', marginBottom: '24px', background: 'linear-gradient(135deg, #fff 0%, #e2e8f0 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.03em', lineHeight: '1.4' }}> {/* Fix: lineHeight 1.4 for title */}
-                    Khoảnh khắc Eight Ducks<br />Chạm vào kí ức thanh xuân
+                <h1 style={{ fontSize: 'clamp(32px, 8vw, 60px)', fontWeight: '800', marginBottom: '18px', background: 'linear-gradient(135deg, #fff 0%, #e2e8f0 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.03em', lineHeight: '1.35' }}> {/* Fix: lineHeight 1.35 for title */}
+                    Khoảnh khắc Eight Ducks<br />Chạm vào ký ức thanh xuân
                 </h1>
-                <p style={{ fontSize: '20px', color: '#cbd5e1', maxWidth: '760px', margin: '0 auto', lineHeight: '1.6' }}>Chủ đề: tình cảm tuổi học trò, kí ức tươi đẹp của thanh xuân và mọi cảm hứng bạn muốn sẻ chia.</p>
+                <p style={{ fontSize: '20px', color: '#cbd5e1', maxWidth: '760px', margin: '0 auto', lineHeight: '1.6' }}>Chủ đề: tình cảm tuổi học trò, ký ức tuổi đẹp của thanh xuân và mọi cảm hứng bạn muốn sẻ chia.</p>
                 </div>
                 <VideoShowcase />
             </FadeInSection>
@@ -1837,8 +3181,7 @@ const App = () => {
                     <NewsArticle 
                         {...article} 
                         onClick={() => {
-                          window.history.pushState({}, "", `/post?id=${article.id}`);
-                          setSelectedArticle(article);
+                          navigate(`/post/${article.id}`);
                         }} 
                     />
                   </FadeInSection>
@@ -1846,7 +3189,7 @@ const App = () => {
               </div>
             ) : (
               <div style={{ textAlign: 'center', padding: '60px', color: '#d1d5db', background: 'rgba(255,255,255,0.02)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <div style={{ fontSize: '40px', marginBottom: '16px' }}>📝</div>
+                  <div style={{ fontSize: '40px', marginBottom: '16px' }}>😕</div>
                 <p style={{ fontSize: '18px', marginBottom: '16px' }}>Chưa có bài viết nào ở đây cả. Góc này vẫn còn trống trải quá.</p>
                 <p style={{ color: '#a1a1aa', marginBottom: '24px' }}>Hãy là người đầu tiên chia sẻ câu chuyện của bạn để mọi người cùng lắng nghe nhé!</p>
                 <button onClick={() => setShowCreatePost(true)} style={{ padding: '12px 24px', background: PRIMARY_GRADIENT, border: 'none', borderRadius: '999px', color: '#fff', fontWeight: 700, cursor: 'pointer', boxShadow: `0 8px 24px ${BRAND.soft}` }}>Viết bài ngay</button>
@@ -1859,12 +3202,26 @@ const App = () => {
       <footer style={{ textAlign: 'center', padding: '60px', color: '#64748b', fontSize: '14px', borderTop: '1px solid rgba(255, 255, 255, 0.05)', position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
       Built by <img src="https://i.ibb.co/TBNykxRH/sniffen-terminal-window-v7.gif" alt="Sniffen" style={{ height: '40px', borderRadius: '4px' }} />
     </footer>
+    </div>
+  );
+
+  return (
+    <>
+      <style>{GLOBAL_STYLES}</style>
+      <Routes>
+        <Route path="/" element={HomeUI} />
+        <Route path="/post/:id" element={<>{renderNav()}<ArticleDetailRoute posts={posts} ambientIntensity={ambientIntensity} scrollY={scrollY} currentUser={username} currentAvatar={avatar} onSyncArticleViews={handleSyncArticleViews} /></>} />
+      </Routes>
       <WelcomeModal isOpen={showWelcomeModal} initialName={nameDraft || username} onSubmit={handleSaveName} />
       <CreatePostModal isOpen={showCreatePost} onClose={() => setShowCreatePost(false)} onPost={handleCreatePost} />
-      
-      <style>{GLOBAL_STYLES}</style>
-    </div>
+    </>
   );
 };
 
 export default App;
+
+
+
+
+
+
