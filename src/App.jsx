@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './lib/supabase';
 import { Routes, Route, useNavigate, useParams, useLocation } from "react-router-dom";
+import { SiZalo } from "react-icons/si";
 import { 
   Search, Bell, Menu, X, Plus, TrendingUp, Bookmark, Share2, 
   Upload, Calendar, Volume2, VolumeX, School, BookOpen, Film, 
@@ -424,7 +425,7 @@ const PRIMARY_GRADIENT = `linear-gradient(90deg, ${BRAND.primary} 0%, ${BRAND.pr
 // --- 3. ICONS ---
 const FacebookIcon = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047v-2.6c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>);
 const TikTokIcon = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg>);
-const XIcon = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>);
+
 
 // --- 4. HELPERS ---
 const getCategoryIcon = (cat) => {
@@ -1346,9 +1347,40 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', padding: '16px 20px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px', backdropFilter: 'blur(10px)' }}>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
               <span style={{ fontSize: '14px', color: '#9ca3af', marginRight: '8px', fontWeight: '500' }}>Chia sẻ:</span>
-              <ShareButton icon={<FacebookIcon />} color="#1877F2" onClick={() => {}} />
-              <ShareButton icon={<TikTokIcon />} color="#000000" onClick={() => {}} />
-              <ShareButton icon={<XIcon />} color="#1DA1F2" onClick={() => {}} />
+              <ShareButton
+                icon={<FacebookIcon />}
+                color="#1877F2"
+                onClick={() => {
+                  const url = encodeURIComponent(window.location.href);
+                  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                  const shareChannelUrl = `https://www.facebook.com/share_channel/?type=reshare&link=${encodeURIComponent(url)}&source_surface=external_reshare`;
+
+                  if (isMobile) {
+                    // Mở app Facebook (nếu có)
+                    window.location.href = `fb://facewebmodal/f?href=${encodeURIComponent(shareChannelUrl)}`;
+
+                    // fallback nếu không mở được app
+                    setTimeout(() => {
+                      window.open(shareChannelUrl, "_blank");
+                    }, 1200);
+                  } else {
+                    window.open(shareChannelUrl, "_blank", "width=600,height=500");
+                  }
+                }}
+              />
+              <ShareButton icon={<TikTokIcon />} color="#000000" onClick={async () => {
+                const url = window.location.href;
+                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                await navigator.clipboard.writeText(url);
+                if (isMobile) window.location.href = 'tiktok://';
+                alert('✓ Đã copy link!');
+                window.open('https://tiktok.com', '_blank', 'width=600,height=500');
+              }} />
+              <ShareButton icon={<SiZalo size={24} />} color="#1DA1F2" onClick={() => {
+                const url = window.location.href;
+                const shareUrl = `https://zalo.me/share/v2?link=${encodeURIComponent(url)}`;
+                window.open(shareUrl, '_blank', 'width=600,height=500');
+              }} />
               <button onClick={handleCopyLink} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 16px', height: '40px', background: copied ? 'rgba(34, 197, 94, 0.15)' : 'rgba(255, 255, 255, 0.05)', border: copied ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '20px', color: copied ? '#4ade80' : '#e5e7eb', fontSize: '13px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.2s ease' }}>
                 {copied ? <Check size={16} /> : <LinkIcon size={16} />} {copied ? 'Đã sao chép' : 'Sao chép link'}
               </button>
