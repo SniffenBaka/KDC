@@ -691,28 +691,150 @@ const ShareButton = ({ icon, color, onClick }) => (
   <button onClick={onClick} style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid rgba(255, 255, 255, 0.1)', background: 'rgba(255, 255, 255, 0.03)', color: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s ease' }} onMouseEnter={(e) => { e.currentTarget.style.background = color; e.currentTarget.style.color = '#fff'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = color; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'; e.currentTarget.style.color = '#e5e7eb'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}>{icon}</button>
 );
 
-// Updated CommentSection to handle admin deletion & async submit
+// Updated CommentSection to handle admin deletion & async submit with GIF support
 const CommentSection = ({ comments = [], onAddComment, isAdmin, onDeleteComment, isLoading = false, isSubmitting = false, currentUser, currentAvatar }) => {
   const isImageLike = (src) => typeof src === 'string' && (src.startsWith('data:') || src.startsWith('http://') || src.startsWith('https://'));
   const [newComment, setNewComment] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [visibleCount, setVisibleCount] = useState(5);
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [gifSearch, setGifSearch] = useState('');
+  const [gifs, setGifs] = useState([]);
+  const [gifLoading, setGifLoading] = useState(false);
+  const [selectedGif, setSelectedGif] = useState(null);
+  const gifPickerRef = useRef(null);
+  
   const visibleComments = comments.slice(0, visibleCount);
   const hasMoreComments = comments.length > visibleCount;
+
+  // Tenor API Key (free tier)
+  const TENOR_API_KEY = 'AIzaSyAyimkuYQYF_FXVALexPuGQctUWRURdCYQ';
 
   useEffect(() => {
     setVisibleCount(5);
   }, [comments.length]);
 
-  const handleSubmit = async () => {
-    const value = newComment.trim();
-    if (!value || isSubmitting) return;
+  // Close GIF picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (gifPickerRef.current && !gifPickerRef.current.contains(e.target)) {
+        setShowGifPicker(false);
+      }
+    };
+    if (showGifPicker) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showGifPicker]);
+
+  // Fetch trending GIFs on open
+  useEffect(() => {
+    if (showGifPicker && gifs.length === 0) {
+      fetchTrendingGifs();
+    }
+  }, [showGifPicker]);
+
+  const fetchTrendingGifs = async () => {
+    setGifLoading(true);
     try {
-      const ok = await onAddComment(value);
-      if (ok) setNewComment('');
+      const res = await fetch(`https://tenor.googleapis.com/v2/featured?key=${TENOR_API_KEY}&limit=20&media_filter=gif`);
+      const data = await res.json();
+      setGifs(data.results || []);
+    } catch (err) {
+      console.error('Error fetching trending GIFs:', err);
+    }
+    setGifLoading(false);
+  };
+
+  const searchGifs = async (query) => {
+    if (!query.trim()) {
+      fetchTrendingGifs();
+      return;
+    }
+    setGifLoading(true);
+    try {
+      const res = await fetch(`https://tenor.googleapis.com/v2/search?key=${TENOR_API_KEY}&q=${encodeURIComponent(query)}&limit=20&media_filter=gif`);
+      const data = await res.json();
+      setGifs(data.results || []);
+    } catch (err) {
+      console.error('Error searching GIFs:', err);
+    }
+    setGifLoading(false);
+  };
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (showGifPicker) searchGifs(gifSearch);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [gifSearch, showGifPicker]);
+
+  const selectGif = (gif) => {
+    const gifUrl = gif.media_formats?.gif?.url || gif.media_formats?.tinygif?.url;
+    if (gifUrl) {
+      setSelectedGif(gifUrl);
+      setShowGifPicker(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    const textValue = newComment.trim();
+    if ((!textValue && !selectedGif) || isSubmitting) return;
+    
+    // Combine text and GIF
+    let finalContent = textValue;
+    if (selectedGif) {
+      finalContent = textValue ? `${textValue}\n[GIF]${selectedGif}[/GIF]` : `[GIF]${selectedGif}[/GIF]`;
+    }
+    
+    try {
+      const ok = await onAddComment(finalContent);
+      if (ok) {
+        setNewComment('');
+        setSelectedGif(null);
+      }
     } catch (err) {
       console.error(err);
     }
+  };
+
+  // Parse comment content to render GIFs
+  const renderCommentContent = (content) => {
+    if (!content) return null;
+    
+    // Check for GIF pattern
+    const gifRegex = /\[GIF\](.*?)\[\/GIF\]/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+    
+    while ((match = gifRegex.exec(content)) !== null) {
+      // Add text before GIF
+      if (match.index > lastIndex) {
+        parts.push(<span key={`text-${lastIndex}`}>{content.slice(lastIndex, match.index)}</span>);
+      }
+      // Add GIF
+      parts.push(
+        <img 
+          key={`gif-${match.index}`} 
+          src={match[1]} 
+          alt="GIF" 
+          style={{ 
+            maxWidth: '200px', 
+            borderRadius: '12px', 
+            marginTop: '8px',
+            display: 'block'
+          }} 
+        />
+      );
+      lastIndex = match.index + match[0].length;
+    }
+    
+    // Add remaining text
+    if (lastIndex < content.length) {
+      parts.push(<span key={`text-end`}>{content.slice(lastIndex)}</span>);
+    }
+    
+    return parts.length > 0 ? parts : content;
   };
 
   return (
@@ -728,19 +850,139 @@ const CommentSection = ({ comments = [], onAddComment, isAdmin, onDeleteComment,
         </div>
         <div style={{ flex: 1, position: 'relative' }}>
           <textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} onFocus={() => setIsFocused(true)} onBlur={() => setIsFocused(false)} placeholder="Chia sẻ suy nghĩ của bạn..." rows={2} style={{ width: '100%', padding: '10px 0', background: 'transparent', border: 'none', color: '#e4e4e7', fontSize: '15px', resize: 'none', outline: 'none', minHeight: '24px' }} />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+          
+          {/* Selected GIF Preview */}
+          {selectedGif && (
+            <div style={{ position: 'relative', display: 'inline-block', marginBottom: '10px' }}>
+              <img src={selectedGif} alt="Selected GIF" style={{ maxWidth: '150px', borderRadius: '12px' }} />
+              <button 
+                onClick={() => setSelectedGif(null)}
+                style={{ position: 'absolute', top: '-8px', right: '-8px', width: '24px', height: '24px', borderRadius: '50%', background: '#ef4444', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+            {/* GIF Button */}
+            <div style={{ position: 'relative' }} ref={gifPickerRef}>
+              <button
+                onClick={() => setShowGifPicker(!showGifPicker)}
+                style={{
+                  background: showGifPicker ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  padding: '6px 12px',
+                  borderRadius: '16px',
+                  color: showGifPicker ? '#a78bfa' : '#9ca3af',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <span style={{ fontSize: '14px' }}>GIF</span>
+              </button>
+              
+              {/* GIF Picker Dropdown */}
+              {showGifPicker && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '100%',
+                  left: 0,
+                  marginBottom: '10px',
+                  width: '320px',
+                  maxHeight: '400px',
+                  background: 'rgba(25, 25, 30, 0.98)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '16px',
+                  boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+                  overflow: 'hidden',
+                  zIndex: 100
+                }}>
+                  {/* Search Header */}
+                  <div style={{ padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', padding: '8px 12px' }}>
+                      <Search size={16} color="#9ca3af" />
+                      <input
+                        type="text"
+                        placeholder="Tìm kiếm GIF..."
+                        value={gifSearch}
+                        onChange={(e) => setGifSearch(e.target.value)}
+                        style={{ flex: 1, background: 'transparent', border: 'none', color: '#f9fafb', fontSize: '14px', outline: 'none' }}
+                        autoFocus
+                      />
+                    </div>
+                    <div style={{ marginTop: '8px', fontSize: '10px', color: '#71717a', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span>Powered by</span>
+                      <span style={{ fontWeight: '600', color: '#9ca3af' }}>TENOR</span>
+                    </div>
+                  </div>
+                  
+                  {/* GIF Grid */}
+                  <div style={{ 
+                    padding: '8px', 
+                    maxHeight: '300px', 
+                    overflowY: 'auto',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    gap: '8px'
+                  }}>
+                    {gifLoading ? (
+                      <div style={{ gridColumn: 'span 2', textAlign: 'center', padding: '20px', color: '#9ca3af' }}>
+                        Đang tải...
+                      </div>
+                    ) : gifs.length > 0 ? (
+                      gifs.map((gif, index) => (
+                        <button
+                          key={gif.id || index}
+                          onClick={() => selectGif(gif)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            padding: 0,
+                            cursor: 'pointer',
+                            borderRadius: '8px',
+                            overflow: 'hidden',
+                            transition: 'transform 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.03)'}
+                          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                        >
+                          <img
+                            src={gif.media_formats?.tinygif?.url || gif.media_formats?.gif?.url}
+                            alt={gif.content_description || 'GIF'}
+                            style={{ width: '100%', height: '100px', objectFit: 'cover', borderRadius: '8px' }}
+                            loading="lazy"
+                          />
+                        </button>
+                      ))
+                    ) : (
+                      <div style={{ gridColumn: 'span 2', textAlign: 'center', padding: '20px', color: '#9ca3af' }}>
+                        Không tìm thấy GIF
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Submit Button */}
             <button
               onClick={handleSubmit}
-              disabled={!newComment.trim() || isSubmitting}
+              disabled={(!newComment.trim() && !selectedGif) || isSubmitting}
               style={{
-                background: newComment.trim() && !isSubmitting ? BRAND.primary : 'rgba(255,255,255,0.1)',
-                color: newComment.trim() && !isSubmitting ? '#fff' : '#71717a',
+                background: (newComment.trim() || selectedGif) && !isSubmitting ? BRAND.primary : 'rgba(255,255,255,0.1)',
+                color: (newComment.trim() || selectedGif) && !isSubmitting ? '#fff' : '#71717a',
                 border: 'none',
                 padding: '8px 20px',
                 borderRadius: '20px',
                 fontSize: '13px',
                 fontWeight: '600',
-                cursor: newComment.trim() && !isSubmitting ? 'pointer' : 'default',
+                cursor: (newComment.trim() || selectedGif) && !isSubmitting ? 'pointer' : 'default',
                 transition: 'all 0.2s',
                 display: 'flex',
                 alignItems: 'center',
@@ -787,7 +1029,9 @@ const CommentSection = ({ comments = [], onAddComment, isAdmin, onDeleteComment,
                             </button>
                         )}
                     </div>
-                    <p style={{ fontSize: '15px', color: '#d4d4d8', lineHeight: '1.6', background: 'rgba(255,255,255,0.03)', padding: '12px 16px', borderRadius: '0 16px 16px 16px', display: 'inline-block', border: '1px solid rgba(255,255,255,0.05)' }}>{content}</p>
+                    <div style={{ fontSize: '15px', color: '#d4d4d8', lineHeight: '1.6', background: 'rgba(255,255,255,0.03)', padding: '12px 16px', borderRadius: '0 16px 16px 16px', display: 'inline-block', border: '1px solid rgba(255,255,255,0.05)' }}>
+                      {renderCommentContent(content)}
+                    </div>
                 </div>
             </div>
         ); }) : (<p style={{ color: '#71717a', fontStyle: 'italic' }}>Chưa có bình luận nào. Hãy là người đầu tiên!</p>)}
