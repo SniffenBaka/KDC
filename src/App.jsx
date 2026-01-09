@@ -10,6 +10,9 @@ import {
   ThumbsUp, ThumbsDown, Loader2, VideoOff, Trash2, Edit3, Bold, Italic, Underline, List, Type, Link2, Heart
 } from 'lucide-react';
 import LightPillar from './LightPillar';
+import GradientText from './components/GradientText';
+import ReactBitsBackground from './components/ReactBitsBackground';
+import LightRays from './components/LightRays';
 
 // --- 1. GLOBAL CONSTANTS & STYLES ---
 // Supabase storage helper for uploads
@@ -35,7 +38,7 @@ const GLOBAL_STYLES = `
     margin: 0;
     padding: 0;
     overflow-x: hidden;
-    background-color: #050505;
+    background-color: #060010;
     scroll-behavior: smooth;
   }
   * { box-sizing: border-box; }
@@ -1376,9 +1379,9 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
                 alert('✓ Đã copy link!');
                 window.open('https://tiktok.com', '_blank', 'width=600,height=500');
               }} />
-              <ShareButton icon={<SiZalo size={24} />} color="#1DA1F2" onClick={() => {
+              <ShareButton icon={<SiZalo size={24} />} color="#0068FF" onClick={() => {
                 const url = window.location.href;
-                const shareUrl = `https://zalo.me/share/v2?link=${encodeURIComponent(url)}`;
+                const shareUrl = `https://zalo.me/share?url=${encodeURIComponent(url)}`;
                 window.open(shareUrl, '_blank', 'width=600,height=500');
               }} />
               <button onClick={handleCopyLink} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 16px', height: '40px', background: copied ? 'rgba(34, 197, 94, 0.15)' : 'rgba(255, 255, 255, 0.05)', border: copied ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '20px', color: copied ? '#4ade80' : '#e5e7eb', fontSize: '13px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.2s ease' }}>
@@ -1491,8 +1494,8 @@ const ArticleDetailRoute = ({ posts, ambientIntensity, scrollY, currentUser, cur
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: '#050505', color: '#f9fafb', position: 'relative' }}>
-        <AmbientBackground ambientIntensity={ambientIntensity} scrollY={scrollY} />
+      <div style={{ minHeight: '100vh', color: '#f9fafb', position: 'relative' }}>
+        <ReactBitsBackground />
         <div style={{ padding: '40px', position: 'relative', zIndex: 2 }}>Đang tải bài viết...</div>
       </div>
     );
@@ -1500,16 +1503,16 @@ const ArticleDetailRoute = ({ posts, ambientIntensity, scrollY, currentUser, cur
 
   if (!article) {
     return (
-      <div style={{ minHeight: '100vh', background: '#050505', color: '#f9fafb', position: 'relative' }}>
-        <AmbientBackground ambientIntensity={ambientIntensity} scrollY={scrollY} />
+      <div style={{ minHeight: '100vh', color: '#f9fafb', position: 'relative' }}>
+        <ReactBitsBackground />
         <div style={{ padding: '40px', position: 'relative', zIndex: 2 }}>Không tìm thấy bài viết</div>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#050505', color: '#f9fafb', position: 'relative', overflowX: 'hidden' }}>
-      <AmbientBackground ambientIntensity={ambientIntensity} scrollY={scrollY} />
+    <div style={{ minHeight: '100vh', color: '#f9fafb', position: 'relative', overflowX: 'hidden' }}>
+      <ReactBitsBackground />
       <div style={{ position: 'relative', zIndex: 2 }}>
         <ArticleDetail
           article={article}
@@ -2433,7 +2436,7 @@ const CreatePostModal = ({ isOpen, onClose, onPost }) => {
               <option value="Ký ức tuổi đẹp của thanh xuân">Ký ức tuổi đẹp của thanh xuân</option>
               <option value="Chia sẻ cảm hứng">Chia sẻ cảm hứng</option>
               <option value="Góc tâm sự">Góc tâm sự</option>
-              <option value="Chuyện lập mình">Chuyện lập mình</option>
+              <option value="Chuyện lớp mình">Chuyện lớp mình</option>
             </select>
           </div>
 
@@ -2754,7 +2757,7 @@ const App = () => {
 
   useEffect(() => { if (isSearchOpen && searchInputRef.current) searchInputRef.current.focus(); }, [isSearchOpen]);
 
-  const categories = ['Tất cả', 'Tình cảm tuổi học trò', 'Ký ức thanh xuân', 'Chia sẻ cảm hứng','Góc tâm sự', 'Chuyện lập mình'];
+  const categories = ['Tất cả', 'Tình cảm tuổi học trò', 'Ký ức thanh xuân', 'Chia sẻ cảm hứng','Góc tâm sự', 'Chuyện lớp mình'];
   const navItems = ['Trang chủ', 'Tin tức', 'Video'];
 
   const handleSaveName = (newName) => {
@@ -2942,7 +2945,7 @@ const App = () => {
   .sort((a, b) => (a.isNew === b.isNew ? 0 : a.isNew ? -1 : 1));
 
   const renderNav = () => (
-<nav style={{ position: 'sticky', top: 0, zIndex: 9999, background: 'rgba(10, 10, 10, 0.3)', backdropFilter: 'blur(40px)', borderBottom: '1px solid rgba(167, 139, 250, 0.1)', boxShadow: '0 0 30px rgba(167, 139, 250, 0.05)', opacity: mounted ? 1 : 0, transform: mounted ? 'translateY(0)' : 'translateY(-4px)', transition: 'all 800ms cubic-bezier(0.4, 0, 0.2, 1)', overflow: 'visible' }}>
+<nav style={{ position: 'sticky', top: 0, zIndex: 9999, background: 'rgba(255, 255, 255, 0.01)', backdropFilter: 'blur(20px) saturate(160%)', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)', opacity: mounted ? 1 : 0, transform: mounted ? 'translateY(0)' : 'translateY(-4px)', transition: 'all 800ms cubic-bezier(0.4, 0, 0.2, 1)', overflow: 'visible' }}>
         <div style={{ width: '100%', padding: 'clamp(12px, 2.5vw, 16px) clamp(14px, 4vw, 40px)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: 0 }}>
             <button
@@ -3135,10 +3138,23 @@ const App = () => {
   );
 
 const HomeUI = (
-    <div style={{ minHeight: '100vh', background: '#050505', color: '#f9fafb', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', position: 'relative', overflowX: 'hidden' }}>
-
-      {/* Ambient Background (luxury, subtle, "breathing") */}
-      <AmbientBackground ambientIntensity={ambientIntensity} scrollY={scrollY} />
+    <div style={{ minHeight: '100vh', color: '#f9fafb', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', position: 'relative', overflowX: 'hidden' }}>
+      
+      {/* React Bits Background */}
+      <ReactBitsBackground />
+      
+      {/* LightRays Background Effect */}
+      <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100vh', zIndex: 0, pointerEvents: 'none' }}>
+        <LightRays
+          raysColor="#b943d0"
+          raysSpeed={0.9}
+          lightSpread={1}
+          rayLength={2.2}
+          fadeDistance={1.2}
+          pulsating
+          className="custom-rays"
+        />
+      </div>
 
       {renderNav()}
 
@@ -3162,10 +3178,13 @@ const HomeUI = (
             {/* WRAP HERO CONTENT IN FADE-IN SECTION */}
             <FadeInSection>
                 <div style={{ textAlign: 'center', marginBottom: 'clamp(32px, 6vw, 56px)' }}>
-                <h1 style={{ fontSize: 'clamp(32px, 8vw, 60px)', fontWeight: '800', marginBottom: '18px', background: 'linear-gradient(135deg, #fff 0%, #e2e8f0 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.03em', lineHeight: '1.35' }}> {/* Fix: lineHeight 1.35 for title */}
-                    Khoảnh khắc Eight Ducks<br />Chạm vào ký ức thanh xuân
+                <h1 style={{ fontFamily: 'Inter', fontSize: 'clamp(48px, 7vw, 56px)', fontWeight: '700', marginBottom: '18px', color: '#f9fafb', letterSpacing: '-0.02em', lineHeight: '1.2' }}>
+                    <GradientText colors={["#7B3FE4", "#A855F7", "#CBA7FF"]} animationSpeed={2.5} direction="horizontal" yoyo pauseOnHover={false}>
+                      <div>Khoảng khắc Eight Ducks</div>
+                      <div style={{ marginTop: '8px' }}>Chạm vào ký ức thanh xuân</div>
+                    </GradientText>
                 </h1>
-                <p style={{ fontSize: '20px', color: '#cbd5e1', maxWidth: '760px', margin: '0 auto', lineHeight: '1.6' }}>Chủ đề: tình cảm tuổi học trò, ký ức tuổi đẹp của thanh xuân và mọi cảm hứng bạn muốn sẻ chia.</p>
+                <p style={{ fontFamily: 'Figtree', fontSize: '24px', color: '#cbd5e1', maxWidth: '840px', margin: '0 auto', lineHeight: '1.6' }}>Chủ đề: tình cảm tuổi học trò, ký ức tuổi đẹp của thanh xuân và mọi cảm hứng bạn muốn sẻ chia.</p>
                 </div>
                 <VideoShowcase />
             </FadeInSection>
@@ -3184,18 +3203,19 @@ const HomeUI = (
                             style={{ 
                                 padding: '10px 24px', 
                                 borderRadius: '100px', 
-                                // Style Logic: Selected -> Purple Border, Hover -> White Border, Normal -> Faint White
-                            border: selectedCategory === cat ? `1px solid ${BRAND.border}` : (hoveredCat === cat ? '1px solid rgba(255, 255, 255, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)'), 
-                            // Style Logic: Selected -> Purple Bg, Normal/Hover -> Faint White
-                            background: selectedCategory === cat ? 'rgba(147, 51, 234, 0.15)' : 'rgba(255, 255, 255, 0.03)', 
+                                // Liquid Glass Style
+                            border: selectedCategory === cat ? `1px solid ${BRAND.primary}` : '1px solid rgba(255, 255, 255, 0.08)', 
+                            background: selectedCategory === cat ? 'rgba(147, 51, 234, 0.2)' : 'rgba(255, 255, 255, 0.02)', 
+                            backdropFilter: 'blur(10px)',
                             // Color Logic: Selected -> Purple, Hover -> White, Normal -> Gray
-                            color: selectedCategory === cat ? BRAND.primaryHover : (hoveredCat === cat ? '#fff' : '#9ca3af'), 
+                            color: selectedCategory === cat ? '#d8b4fe' : (hoveredCat === cat ? '#fff' : '#9ca3af'), 
                             fontSize: '15px', 
                             fontWeight: '500', 
                             cursor: 'pointer', 
-                            transition: 'all 300ms', 
-                            boxShadow: selectedCategory === cat ? `0 0 20px ${BRAND.soft}` : 'none' 
-                        }}
+                            transition: 'all 0.3s ease',
+                            boxShadow: selectedCategory === cat ? '0 0 20px rgba(147, 51, 234, 0.3)' : 'none',
+                            textShadow: selectedCategory === cat ? '0 0 10px rgba(147, 51, 234, 0.5)' : 'none'
+                            }}
                     >
                     {cat}
                     </button>
