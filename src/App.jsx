@@ -2,12 +2,14 @@
 import { supabase } from './lib/supabase';
 import { Routes, Route, useNavigate, useParams, useLocation } from "react-router-dom";
 import { SiZalo } from "react-icons/si";
+import EmojiPicker, { Theme, EmojiStyle } from 'emoji-picker-react';
 import { 
   Search, Bell, Menu, X, Plus, TrendingUp, Bookmark, Share2, 
   Upload, Calendar, Volume2, VolumeX, School, BookOpen, Film, 
   Lightbulb, ArrowLeft, Clock, User, Link as LinkIcon, Check, 
   MessageSquare, Image as ImageIcon, Send, MessageCircle, FileText, 
-  ThumbsUp, ThumbsDown, Loader2, VideoOff, Trash2, Edit3, Bold, Italic, Underline, List, Type, Link2, Heart
+  ThumbsUp, ThumbsDown, Loader2, VideoOff, Trash2, Edit3, Bold, Italic, Underline, List, Type, Link2, Heart,
+  Sparkles, Pencil, Smile
 } from 'lucide-react';
 import LightPillar from './LightPillar';
 import GradientText from './components/GradientText';
@@ -40,8 +42,12 @@ const GLOBAL_STYLES = `
     overflow-x: hidden;
     background-color: #060010;
     scroll-behavior: smooth;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
-  * { box-sizing: border-box; }
+  * { 
+    box-sizing: border-box;
+    font-family: inherit;
+  }
   *:focus { outline: none !important; }
   
   /* Custom Scrollbar */
@@ -333,8 +339,14 @@ const GLOBAL_STYLES = `
 
   /* Article content formatting */
   .article-content {
-    line-height: 1.7;
+    font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 17px;
+    line-height: 1.8;
     color: #e2e8f0;
+    letter-spacing: 0.01em;
+    font-weight: 400;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
   }
   .article-content a {
     color: #c084fc;
@@ -434,8 +446,10 @@ const TikTokIcon = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="
 const getCategoryIcon = (cat) => {
   switch (cat) {
     case 'Tình cảm tuổi học trò': return <Heart size={14} />;
-    case 'Ký ức tuổi đẹp của thanh xuân': return <BookOpen size={14} />;
+    case 'Ký ức ước mơ': return <Sparkles size={14} />;
     case 'Chia sẻ cảm hứng': return <Lightbulb size={14} />;
+    case 'Góc tâm sự': return <BookOpen size={14} />;
+    case 'Chuyện lớp mình': return <Pencil size={14} />;
     default: return null; 
   }
 };
@@ -687,8 +701,15 @@ const NotificationDropdown = ({ notifications, onClose, onMarkAllRead }) => {
   );
 };
 
-const ShareButton = ({ icon, color, onClick }) => (
-  <button onClick={onClick} style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid rgba(255, 255, 255, 0.1)', background: 'rgba(255, 255, 255, 0.03)', color: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s ease' }} onMouseEnter={(e) => { e.currentTarget.style.background = color; e.currentTarget.style.color = '#fff'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = color; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'; e.currentTarget.style.color = '#e5e7eb'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}>{icon}</button>
+const ShareButton = ({ icon, color, onClick, title }) => (
+  <button 
+    onClick={onClick} 
+    title={title}
+    aria-label={title}
+    style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid rgba(255, 255, 255, 0.1)', background: 'rgba(255, 255, 255, 0.03)', color: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' }} 
+    onMouseEnter={(e) => { e.currentTarget.style.background = color; e.currentTarget.style.color = '#fff'; e.currentTarget.style.transform = 'translateY(-3px) scale(1.1)'; e.currentTarget.style.borderColor = color; e.currentTarget.style.boxShadow = `0 8px 20px ${color}40`; }} 
+    onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'; e.currentTarget.style.color = '#e5e7eb'; e.currentTarget.style.transform = 'translateY(0) scale(1)'; e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'; e.currentTarget.style.boxShadow = 'none'; }}
+  >{icon}</button>
 );
 
 // Updated CommentSection to handle admin deletion & async submit with GIF support
@@ -703,6 +724,10 @@ const CommentSection = ({ comments = [], onAddComment, isAdmin, onDeleteComment,
   const [gifLoading, setGifLoading] = useState(false);
   const [selectedGif, setSelectedGif] = useState(null);
   const gifPickerRef = useRef(null);
+  
+  // Emoji Picker State
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiPickerRef = useRef(null);
   
   const visibleComments = comments.slice(0, visibleCount);
   const hasMoreComments = comments.length > visibleCount;
@@ -724,6 +749,17 @@ const CommentSection = ({ comments = [], onAddComment, isAdmin, onDeleteComment,
     if (showGifPicker) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showGifPicker]);
+
+  // Close Emoji picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    if (showEmojiPicker) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showEmojiPicker]);
 
   // Fetch trending GIFs on open
   useEffect(() => {
@@ -865,10 +901,88 @@ const CommentSection = ({ comments = [], onAddComment, isAdmin, onDeleteComment,
           )}
           
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-            {/* GIF Button */}
-            <div style={{ position: 'relative' }} ref={gifPickerRef}>
+            {/* Emoji & GIF Buttons Container */}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {/* Emoji Button */}
+              <div style={{ position: 'relative' }} ref={emojiPickerRef}>
+                <button
+                  onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowGifPicker(false); }}
+                  title="Thêm emoji vào bình luận"
+                  style={{
+                    background: showEmojiPicker ? 'rgba(250, 204, 21, 0.2)' : 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    padding: '6px 12px',
+                    borderRadius: '16px',
+                    color: showEmojiPicker ? '#fcd34d' : '#9ca3af',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(250, 204, 21, 0.3)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = 'none'; }}
+                >
+                  <Smile size={16} />
+                </button>
+                
+                {/* Emoji Picker Dropdown */}
+                {showEmojiPicker && (
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '100%',
+                    left: 0,
+                    marginBottom: '10px',
+                    zIndex: 100,
+                    borderRadius: '16px',
+                    overflow: 'hidden',
+                    boxShadow: '0 20px 50px rgba(0,0,0,0.5), 0 0 40px rgba(139,92,246,0.15)',
+                    border: '1px solid rgba(139,92,246,0.2)'
+                  }}>
+                    <EmojiPicker
+                      onEmojiClick={(emojiData) => {
+                        setNewComment(prev => prev + emojiData.emoji);
+                        setShowEmojiPicker(false);
+                      }}
+                      theme={Theme.DARK}
+                      emojiStyle={EmojiStyle.TWITTER}
+                      width={340}
+                      height={420}
+                      searchPlaceHolder="Tìm emoji..."
+                      skinTonesDisabled
+                      previewConfig={{ showPreview: false }}
+                      lazyLoadEmojis={true}
+                      searchDisabled={false}
+                      style={{
+                        '--epr-bg-color': 'rgb(20, 20, 25)',
+                        '--epr-category-label-bg-color': 'rgb(20, 20, 25)',
+                        '--epr-hover-bg-color': 'rgba(139, 92, 246, 0.2)',
+                        '--epr-focus-bg-color': 'rgba(139, 92, 246, 0.3)',
+                        '--epr-highlight-color': '#a78bfa',
+                        '--epr-search-border-color': 'rgba(139, 92, 246, 0.3)',
+                        '--epr-category-icon-active-color': '#a78bfa',
+                        '--epr-skin-tone-picker-menu-color': 'rgb(25, 25, 30)',
+                        '--epr-text-color': '#e5e7eb',
+                        '--epr-search-input-bg-color': 'rgba(255,255,255,0.05)',
+                        '--epr-picker-border-color': 'transparent',
+                        '--epr-picker-border-radius': '16px',
+                        '--epr-search-input-text-color': '#e5e7eb',
+                        '--epr-search-input-placeholder-color': '#71717a',
+                        '--epr-emoji-size': '28px',
+                        '--epr-emoji-padding': '6px',
+                        '--epr-header-padding': '12px 14px'
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* GIF Button */}
+              <div style={{ position: 'relative' }} ref={gifPickerRef}>
               <button
                 onClick={() => setShowGifPicker(!showGifPicker)}
+                title="Thêm GIF vào bình luận"
                 style={{
                   background: showGifPicker ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255,255,255,0.05)',
                   border: '1px solid rgba(255,255,255,0.1)',
@@ -881,8 +995,10 @@ const CommentSection = ({ comments = [], onAddComment, isAdmin, onDeleteComment,
                   display: 'flex',
                   alignItems: 'center',
                   gap: '4px',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(139, 92, 246, 0.3)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = 'none'; }}
               >
                 <span style={{ fontSize: '14px' }}>GIF</span>
               </button>
@@ -969,11 +1085,13 @@ const CommentSection = ({ comments = [], onAddComment, isAdmin, onDeleteComment,
                 </div>
               )}
             </div>
+          </div>
             
             {/* Submit Button */}
             <button
               onClick={handleSubmit}
               disabled={(!newComment.trim() && !selectedGif) || isSubmitting}
+              title="Gửi bình luận của bạn"
               style={{
                 background: (newComment.trim() || selectedGif) && !isSubmitting ? BRAND.primary : 'rgba(255,255,255,0.1)',
                 color: (newComment.trim() || selectedGif) && !isSubmitting ? '#fff' : '#71717a',
@@ -983,12 +1101,14 @@ const CommentSection = ({ comments = [], onAddComment, isAdmin, onDeleteComment,
                 fontSize: '13px',
                 fontWeight: '600',
                 cursor: (newComment.trim() || selectedGif) && !isSubmitting ? 'pointer' : 'default',
-                transition: 'all 0.2s',
+                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
                 opacity: isSubmitting ? 0.7 : 1
               }}
+              onMouseEnter={(e) => { if ((newComment.trim() || selectedGif) && !isSubmitting) { e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)'; e.currentTarget.style.boxShadow = `0 8px 20px ${BRAND.soft}`; }}}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0) scale(1)'; e.currentTarget.style.boxShadow = 'none'; }}
             >
               {isSubmitting ? 'Đang gửi...' : 'Gửi'} <Send size={14} />
             </button>
@@ -1055,11 +1175,23 @@ const SurveySection = () => {
   return (
     <div style={{ marginTop: '60px', padding: 'clamp(18px, 4vw, 40px)', background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(6, 182, 212, 0.05))', borderRadius: '24px', border: '1px solid rgba(139, 92, 246, 0.2)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'relative', zIndex: 2 }}>
-        <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#f9fafb', marginBottom: '12px' }}>Ý kiến của bạn rất quan trọng!</h3>
+        <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#f9fafb', marginBottom: '12px', fontFamily: "'Inter', sans-serif" }}>Ý kiến của bạn rất quan trọng!</h3>
         <p style={{ color: '#a1a1aa', fontSize: '15px', marginBottom: '24px', maxWidth: '600px', margin: '0 auto 32px', lineHeight: '1.6' }}>Hãy giúp Eight Ducks cải thiện chất lượng nội dung bằng cách dành 1 phút để làm khảo sát nhỏ này hoặc gửi góp ý trực tiếp cho chúng tôi.</p>
-        <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
-          <button onClick={() => { handleClick('Khảo sát'); window.open('https://forms.gle/zUcp6voSQga6nzvQ8', '_blank'); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 28px', background: BRAND.primary, borderRadius: '100px', border: 'none', color: '#fff', fontWeight: '600', cursor: 'pointer', transition: 'transform 0.2s', boxShadow: `0 4px 15px ${BRAND.soft}` }}><FileText size={18} /> Làm khảo sát</button>
-          <button onClick={() => { handleClick('Góp ý'); window.open('https://forms.gle/9DfnG5uGaF8uaGnv8', '_blank'); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 28px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '100px', border: '1px solid rgba(255, 255, 255, 0.2)', color: '#e4e4e7', fontWeight: '600', cursor: 'pointer', transition: 'background 0.2s' }}><MessageCircle size={18} /> Gửi góp ý</button>
+        <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <button 
+            onClick={() => { handleClick('Khảo sát'); window.open('https://forms.gle/zUcp6voSQga6nzvQ8', '_blank'); }} 
+            title="Làm khảo sát để đánh giá nội dung"
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 28px', background: BRAND.primary, borderRadius: '100px', border: 'none', color: '#fff', fontWeight: '600', cursor: 'pointer', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: `0 4px 15px ${BRAND.soft}` }}
+            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px) scale(1.03)'; e.currentTarget.style.boxShadow = `0 8px 25px ${BRAND.soft}`; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0) scale(1)'; e.currentTarget.style.boxShadow = `0 4px 15px ${BRAND.soft}`; }}
+          ><FileText size={18} /> Làm khảo sát</button>
+          <button 
+            onClick={() => { handleClick('Góp ý'); window.open('https://forms.gle/9DfnG5uGaF8uaGnv8', '_blank'); }} 
+            title="Gửi góp ý trực tiếp cho chúng tôi"
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 28px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '100px', border: '1px solid rgba(255, 255, 255, 0.2)', color: '#e4e4e7', fontWeight: '600', cursor: 'pointer', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px) scale(1.03)'; e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.3)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0) scale(1)'; e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'; e.currentTarget.style.boxShadow = 'none'; }}
+          ><MessageCircle size={18} /> Gửi góp ý</button>
         </div>
       </div>
       <div style={{ position: 'absolute', top: '-50%', left: '-20%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(139, 92, 246, 0.15), transparent 70%)', filter: 'blur(60px)' }} />
@@ -1175,6 +1307,65 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
   const [commentsLoading, setCommentsLoading] = useState(true);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [toast, setToast] = useState(null);
+  
+  // Font size control - persisted in localStorage
+  const FONT_SIZE_KEY = 'eightDucksArticleFontSize';
+  const FONT_FAMILY_KEY = 'eightDucksArticleFontFamily';
+  
+  // Available fonts for reading
+  const FONT_OPTIONS = [
+    { label: 'Be Vietnam Pro', value: "'Be Vietnam Pro', sans-serif", type: 'Sans-serif', isDefault: true },
+    { label: 'Inter', value: "'Inter', sans-serif", type: 'Sans-serif' },
+    { label: 'Roboto', value: "'Roboto', sans-serif", type: 'Sans-serif' },
+    { label: 'Noto Sans', value: "'Noto Sans', sans-serif", type: 'Sans-serif' },
+    { label: 'Open Sans', value: "'Open Sans', sans-serif", type: 'Sans-serif' },
+    { label: 'Lora', value: "'Lora', Georgia, serif", type: 'Serif' },
+    { label: 'Merriweather', value: "'Merriweather', serif", type: 'Serif' },
+    { label: 'System', value: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", type: 'System' },
+  ];
+  
+  const [fontSize, setFontSize] = useState(() => {
+    if (typeof window === 'undefined') return 19;
+    const saved = localStorage.getItem(FONT_SIZE_KEY);
+    return saved ? parseInt(saved, 10) : 19;
+  });
+  
+  const [fontFamily, setFontFamily] = useState(() => {
+    if (typeof window === 'undefined') return FONT_OPTIONS[0].value;
+    const saved = localStorage.getItem(FONT_FAMILY_KEY);
+    return saved || FONT_OPTIONS[0].value;
+  });
+  
+  const [showFontPicker, setShowFontPicker] = useState(false);
+  const fontPickerRef = useRef(null);
+  
+  // Close font picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (fontPickerRef.current && !fontPickerRef.current.contains(e.target)) {
+        setShowFontPicker(false);
+      }
+    };
+    if (showFontPicker) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showFontPicker]);
+  
+  const MIN_FONT_SIZE = 14;
+  const MAX_FONT_SIZE = 24;
+  
+  const handleFontSizeChange = (delta) => {
+    setFontSize((prev) => {
+      const next = Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, prev + delta));
+      localStorage.setItem(FONT_SIZE_KEY, String(next));
+      return next;
+    });
+  };
+  
+  const handleFontFamilyChange = (value) => {
+    setFontFamily(value);
+    localStorage.setItem(FONT_FAMILY_KEY, value);
+  };
+  
   const lastCommentTimeRef = useRef(0);
   const lastCommentTextRef = useRef('');
   const dislikeStorageKey = 'eightDucksDislikes';
@@ -1571,7 +1762,7 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
       <FadeInSection>
         <div style={{ marginBottom: '32px' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(147, 51, 234, 0.15)', color: BRAND.primaryHover, padding: '6px 16px', borderRadius: '20px', fontSize: '14px', fontWeight: '600', marginBottom: '16px', border: `1px solid ${BRAND.border}` }}>{getCategoryIcon(articleCategory)} {articleCategory}</div>
-          <h1 style={{ fontSize: 'clamp(28px, 6vw, 40px)', fontWeight: '700', color: '#ffffff', lineHeight: '1.25', marginBottom: '18px' }}>{article.title}</h1>
+          <h1 style={{ fontSize: 'clamp(28px, 6vw, 40px)', fontWeight: '700', color: '#ffffff', lineHeight: '1.25', marginBottom: '18px', fontFamily: "'Inter', sans-serif" }}>{article.title}</h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: '24px', color: '#9ca3af', fontSize: '14px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><User size={16} color="#a78bfa" /><span style={{ color: '#e5e7eb', fontWeight: '500' }}>{displayAuthor}</span></div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Calendar size={16} color="#a78bfa" /><span>{formatDate(article.created_at || article.date)}</span></div>
@@ -1597,6 +1788,7 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
               <ShareButton
                 icon={<FacebookIcon />}
                 color="#1877F2"
+                title="Chia sẻ lên Facebook"
                 onClick={() => {
                   const url = encodeURIComponent(window.location.href);
                   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -1615,7 +1807,7 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
                   }
                 }}
               />
-              <ShareButton icon={<TikTokIcon />} color="#000000" onClick={async () => {
+              <ShareButton icon={<TikTokIcon />} color="#000000" title="Chia sẻ lên TikTok" onClick={async () => {
                 const url = window.location.href;
                 const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
                 await navigator.clipboard.writeText(url);
@@ -1623,27 +1815,217 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
                 alert('✓ Đã copy link!');
                 window.open('https://tiktok.com', '_blank', 'width=600,height=500');
               }} />
-              <ShareButton icon={<SiZalo size={24} />} color="#0068FF" onClick={() => {
+              <ShareButton icon={<SiZalo size={24} />} color="#0068FF" title="Chia sẻ qua Zalo" onClick={() => {
                 const url = window.location.href;
                 const shareUrl = `https://zalo.me/share?url=${encodeURIComponent(url)}`;
                 window.open(shareUrl, '_blank', 'width=600,height=500');
               }} />
-              <button onClick={handleCopyLink} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 16px', height: '40px', background: copied ? 'rgba(34, 197, 94, 0.15)' : 'rgba(255, 255, 255, 0.05)', border: copied ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '20px', color: copied ? '#4ade80' : '#e5e7eb', fontSize: '13px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.2s ease' }}>
+              <button 
+                onClick={handleCopyLink} 
+                title="Sao chép đường dẫn bài viết"
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 16px', height: '40px', background: copied ? 'rgba(34, 197, 94, 0.15)' : 'rgba(255, 255, 255, 0.05)', border: copied ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '20px', color: copied ? '#4ade80' : '#e5e7eb', fontSize: '13px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' }}
+                onMouseEnter={(e) => { if (!copied) { e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)'; e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)'; }}}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0) scale(1)'; e.currentTarget.style.background = copied ? 'rgba(34, 197, 94, 0.15)' : 'rgba(255, 255, 255, 0.05)'; e.currentTarget.style.boxShadow = 'none'; }}
+              >
                 {copied ? <Check size={16} /> : <LinkIcon size={16} />} {copied ? 'Đã sao chép' : 'Sao chép link'}
               </button>
             </div>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <button onClick={handleLike} disabled={likePending} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: userLiked ? 'rgba(34, 197, 94, 0.18)' : 'transparent', border: `1px solid ${userLiked ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.1)'}`, borderRadius: '20px', color: userLiked ? '#22c55e' : '#9ca3af', cursor: likePending ? 'not-allowed' : 'pointer', transition: 'all 0.2s', opacity: likePending ? 0.65 : 1 }}>
+                <button 
+                  onClick={handleLike} 
+                  disabled={likePending} 
+                  title="Thích bài viết này"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: userLiked ? 'rgba(34, 197, 94, 0.18)' : 'transparent', border: `1px solid ${userLiked ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.1)'}`, borderRadius: '20px', color: userLiked ? '#22c55e' : '#9ca3af', cursor: likePending ? 'not-allowed' : 'pointer', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', opacity: likePending ? 0.65 : 1 }}
+                  onMouseEnter={(e) => { if (!likePending) { e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(34, 197, 94, 0.3)'; }}}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0) scale(1)'; e.currentTarget.style.boxShadow = 'none'; }}
+                >
                     <ThumbsUp size={18} fill={userLiked ? "currentColor" : "none"} /> <span>{likeCount}</span>
                 </button>
-                <button onClick={handleDislike} disabled={likePending} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: userDisliked ? 'rgba(239, 68, 68, 0.15)' : 'transparent', border: `1px solid ${userDisliked ? '#ef4444' : 'rgba(255,255,255,0.1)'}`, borderRadius: '20px', color: userDisliked ? '#f87171' : '#9ca3af', cursor: likePending ? 'not-allowed' : 'pointer', transition: 'all 0.2s', opacity: likePending ? 0.65 : 1 }}>
+                <button 
+                  onClick={handleDislike} 
+                  disabled={likePending} 
+                  title="Không thích bài viết này"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: userDisliked ? 'rgba(239, 68, 68, 0.15)' : 'transparent', border: `1px solid ${userDisliked ? '#ef4444' : 'rgba(255,255,255,0.1)'}`, borderRadius: '20px', color: userDisliked ? '#f87171' : '#9ca3af', cursor: likePending ? 'not-allowed' : 'pointer', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', opacity: likePending ? 0.65 : 1 }}
+                  onMouseEnter={(e) => { if (!likePending) { e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.3)'; }}}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0) scale(1)'; e.currentTarget.style.boxShadow = 'none'; }}
+                >
                     <ThumbsDown size={18} fill={userDisliked ? "currentColor" : "none"} />
                 </button>
             </div>
           </div>
         </div>
 
-        <div style={{ fontSize: '18px', lineHeight: '1.6', color: '#e2e8f0', background: 'rgba(17, 24, 39, 0.4)', backdropFilter: 'blur(12px)', padding: '40px', borderRadius: '24px', border: '1px solid rgba(255, 255, 255, 0.05)', boxShadow: '0 4px 20px rgba(0,0,0,0.2)', marginBottom: 'clamp(32px, 6vw, 56px)' }} className="article-content">
+        {/* Font Settings Control Bar */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '16px', padding: '12px 16px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '12px' }}>
+          {/* Font Family Selector - Left Side */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative' }} ref={fontPickerRef}>
+            <span style={{ fontSize: '13px', color: '#9ca3af' }}>Font:</span>
+            <button
+              onClick={() => setShowFontPicker(!showFontPicker)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 14px',
+                background: showFontPicker ? 'rgba(147, 51, 234, 0.15)' : 'rgba(255,255,255,0.05)',
+                border: showFontPicker ? `1px solid ${BRAND.border}` : '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '10px',
+                color: '#e5e7eb',
+                fontSize: '13px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                minWidth: '160px',
+                justifyContent: 'space-between',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = showFontPicker ? 'rgba(147, 51, 234, 0.15)' : 'rgba(255,255,255,0.05)'; }}
+            >
+              <span style={{ fontFamily: fontFamily, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {FONT_OPTIONS.find(opt => opt.value === fontFamily)?.label || 'Chọn font'}
+              </span>
+              <span style={{ transform: showFontPicker ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', color: '#9ca3af', fontSize: '10px' }}>▼</span>
+            </button>
+            
+            {/* Custom Font Dropdown */}
+            {showFontPicker && (
+              <div style={{
+                position: 'absolute',
+                top: 'calc(100% + 8px)',
+                left: 0,
+                width: '280px',
+                background: 'rgba(20, 20, 28, 0.98)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '14px',
+                boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+                overflow: 'hidden',
+                zIndex: 100,
+                animation: 'fadeIn 0.15s ease-out'
+              }}>
+                <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Type size={16} color="#a78bfa" />
+                  <span style={{ fontSize: '13px', fontWeight: '600', color: '#e5e7eb' }}>Chọn font đọc</span>
+                </div>
+                <div style={{ maxHeight: '300px', overflowY: 'auto', padding: '6px' }}>
+                  {FONT_OPTIONS.map((opt) => {
+                    const isSelected = fontFamily === opt.value;
+                    return (
+                      <button
+                        key={opt.label}
+                        onClick={() => { handleFontFamilyChange(opt.value); setShowFontPicker(false); }}
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          padding: '12px 14px',
+                          background: isSelected ? 'rgba(147, 51, 234, 0.15)' : 'transparent',
+                          border: 'none',
+                          borderRadius: '10px',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                          marginBottom: '2px'
+                        }}
+                        onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = isSelected ? 'rgba(147, 51, 234, 0.15)' : 'transparent'; }}
+                      >
+                        <div style={{ flex: 1, textAlign: 'left' }}>
+                          <div style={{ fontFamily: opt.value, fontSize: '15px', color: isSelected ? '#c084fc' : '#e5e7eb', fontWeight: '500', marginBottom: '2px' }}>
+                            {opt.label}
+                            {opt.isDefault && <span style={{ marginLeft: '6px', fontSize: '10px', color: '#a78bfa', background: 'rgba(147, 51, 234, 0.2)', padding: '2px 6px', borderRadius: '4px' }}>Mặc định</span>}
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#71717a' }}>{opt.type}</div>
+                        </div>
+                        {isSelected && <Check size={16} color="#a78bfa" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Font Size Controls - Right Side */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '13px', color: '#9ca3af' }}>Cỡ chữ:</span>
+            <button
+              onClick={() => handleFontSizeChange(-1)}
+              disabled={fontSize <= MIN_FONT_SIZE}
+              title="Giảm cỡ chữ"
+              style={{
+                width: '36px',
+                height: '36px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: fontSize <= MIN_FONT_SIZE ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '8px',
+                color: fontSize <= MIN_FONT_SIZE ? '#4b5563' : '#e5e7eb',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: fontSize <= MIN_FONT_SIZE ? 'not-allowed' : 'pointer',
+                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+              }}
+              onMouseEnter={(e) => { if (fontSize > MIN_FONT_SIZE) { e.currentTarget.style.transform = 'scale(1.1)'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)'; }}}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = fontSize <= MIN_FONT_SIZE ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.05)'; e.currentTarget.style.boxShadow = 'none'; }}
+            >
+              A-
+            </button>
+            <span style={{ minWidth: '40px', textAlign: 'center', fontSize: '14px', color: '#e5e7eb', fontWeight: '500' }}>{fontSize}px</span>
+            <button
+              onClick={() => handleFontSizeChange(1)}
+              disabled={fontSize >= MAX_FONT_SIZE}
+              title="Tăng cỡ chữ"
+              style={{
+                width: '36px',
+                height: '36px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: fontSize >= MAX_FONT_SIZE ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '8px',
+                color: fontSize >= MAX_FONT_SIZE ? '#4b5563' : '#e5e7eb',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: fontSize >= MAX_FONT_SIZE ? 'not-allowed' : 'pointer',
+                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+              }}
+              onMouseEnter={(e) => { if (fontSize < MAX_FONT_SIZE) { e.currentTarget.style.transform = 'scale(1.1)'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)'; }}}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = fontSize >= MAX_FONT_SIZE ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.05)'; e.currentTarget.style.boxShadow = 'none'; }}
+            >
+              A+
+            </button>
+            <button
+              onClick={() => {
+                setFontSize(19);
+                setFontFamily(FONT_OPTIONS[0].value);
+                localStorage.setItem(FONT_SIZE_KEY, '19');
+                localStorage.setItem(FONT_FAMILY_KEY, FONT_OPTIONS[0].value);
+              }}
+              title="Đặt lại cỡ chữ và font mặc định"
+              style={{
+                marginLeft: '8px',
+                padding: '6px 12px',
+                background: 'transparent',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '8px',
+                color: '#9ca3af',
+                fontSize: '12px',
+                cursor: 'pointer',
+                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#e5e7eb'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#9ca3af'; e.currentTarget.style.boxShadow = 'none'; }}
+            >
+              Mặc định
+            </button>
+          </div>
+        </div>
+
+        <div style={{ fontSize: `${fontSize}px`, fontFamily: fontFamily, lineHeight: '1.8', color: '#e2e8f0', background: 'rgba(17, 24, 39, 0.4)', backdropFilter: 'blur(12px)', padding: 'clamp(20px, 4vw, 40px)', borderRadius: '24px', border: '1px solid rgba(255, 255, 255, 0.05)', boxShadow: '0 4px 20px rgba(0,0,0,0.2)', marginBottom: 'clamp(32px, 6vw, 56px)' }} className="article-content">
           {article.content ? (<div dangerouslySetInnerHTML={{ __html: enhanceLinks(article.content) }} />) : (<><p style={{ marginBottom: '20px' }}>Nội dung chi tiết của bài viết...</p></>)}
           {article.sources && article.sources.length > 0 && (
             <div style={{ marginTop: '40px', paddingTop: '20px', borderTop: '1px dashed rgba(255,255,255,0.1)' }}>
@@ -1687,6 +2069,11 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
           {toast.message}
         </div>
       )}
+      
+      {/* Footer Credit */}
+      <footer style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b', fontSize: '14px', borderTop: '1px solid rgba(255, 255, 255, 0.05)', marginTop: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
+        Built by <img src="https://i.ibb.co/TBNykxRH/sniffen-terminal-window-v7.gif" alt="Sniffen" style={{ height: '40px', borderRadius: '4px' }} />
+      </footer>
     </div>
   );
 };
@@ -2677,7 +3064,7 @@ const CreatePostModal = ({ isOpen, onClose, onPost }) => {
             <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#e4e4e7', marginBottom: '8px' }}>Danh mục</label>
             <select value={category} onChange={(e) => setCategory(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: '#18181b', border: '1px solid #27272a', borderRadius: '8px', color: '#f4f4f5', fontSize: '14px', outline: 'none', transition: 'border 0.2s' }}>
               <option value="Tình cảm tuổi học trò">Tình cảm tuổi học trò</option>
-              <option value="Ký ức tuổi đẹp của thanh xuân">Ký ức tuổi đẹp của thanh xuân</option>
+              <option value="Ký ức ước mơ">Ký ức ước mơ</option>
               <option value="Chia sẻ cảm hứng">Chia sẻ cảm hứng</option>
               <option value="Góc tâm sự">Góc tâm sự</option>
               <option value="Chuyện lớp mình">Chuyện lớp mình</option>
@@ -2898,6 +3285,14 @@ const App = () => {
   const avatarIsImage = avatar && (avatar.startsWith('data:') || avatar.startsWith('http'));
   const avatarFallback = username ? username.charAt(0).toUpperCase() : 'B';
 
+  // Fix: Force scroll to top on initial load
+  useLayoutEffect(() => {
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+    window.scrollTo(0, 0);
+  }, []);
+
   const fetchPosts = async () => {
     if (!supabase) {
       console.error("Supabase client missing. Kiểm tra biến môi trường VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY.");
@@ -3001,7 +3396,7 @@ const App = () => {
 
   useEffect(() => { if (isSearchOpen && searchInputRef.current) searchInputRef.current.focus(); }, [isSearchOpen]);
 
-  const categories = ['Tất cả', 'Tình cảm tuổi học trò', 'Ký ức thanh xuân', 'Chia sẻ cảm hứng','Góc tâm sự', 'Chuyện lớp mình'];
+  const categories = ['Tất cả', 'Tình cảm tuổi học trò', 'Ký ức ước mơ', 'Chia sẻ cảm hứng','Góc tâm sự', 'Chuyện lớp mình'];
   const navItems = ['Trang chủ', 'Tin tức', 'Video'];
 
   const handleSaveName = (newName) => {
