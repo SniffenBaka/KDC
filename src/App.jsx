@@ -3274,7 +3274,15 @@ const App = () => {
   const [nameDraft, setNameDraft] = useState('');
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  
+
+  // Fix: Force scroll to top on initial load
+  useEffect(() => {
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+    window.scrollTo(0, 0);
+  }, []);
+
   // Notifications State - INITIALIZED EMPTY as requested
   const [notifications, setNotifications] = useState([]); 
   
@@ -3284,14 +3292,6 @@ const App = () => {
   const profileMenuRef = useRef(null);
   const avatarIsImage = avatar && (avatar.startsWith('data:') || avatar.startsWith('http'));
   const avatarFallback = username ? username.charAt(0).toUpperCase() : 'B';
-
-  // Fix: Force scroll to top on initial load
-  useLayoutEffect(() => {
-    if ('scrollRestoration' in window.history) {
-      window.history.scrollRestoration = 'manual';
-    }
-    window.scrollTo(0, 0);
-  }, []);
 
   const fetchPosts = async () => {
     if (!supabase) {
