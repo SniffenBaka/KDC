@@ -250,6 +250,38 @@ const GLOBAL_STYLES = `
     .profile-name { display: none; }
     nav .logo-wrap { flex-direction: row; }
     .brand-title { font-size: 18px !important; }
+    
+    /* Fix search dropdown - make it appear below nav */
+    nav {
+      position: sticky !important;
+      top: 0 !important;
+      z-index: 9999 !important;
+    }
+    
+    /* Make images in article content full width on mobile */
+    .article-content img {
+      max-width: 100% !important;
+      width: 100% !important;
+      height: auto !important;
+      object-fit: cover !important;
+    }
+    
+    /* Reorganize like/share buttons on mobile - stack vertically */
+    .article-detail-actions {
+      flex-direction: column !important;
+      align-items: stretch !important;
+      gap: 12px !important;
+    }
+    
+    .article-detail-actions > div {
+      width: 100% !important;
+      justify-content: center !important;
+    }
+    
+    .article-detail-actions button {
+      flex: 1 !important;
+      justify-content: center !important;
+    }
   }
   
   /* Admin Panel Styles */
@@ -443,6 +475,27 @@ const TikTokIcon = () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="
 
 
 // --- 4. HELPERS ---
+const updateMetaTags = (title, image) => {
+  if (!title) return;
+  document.title = title;
+
+  // Helper to update or create meta tag
+  const setMeta = (property, content) => {
+    let tag = document.querySelector(`meta[property="${property}"]`);
+    if (!tag) {
+      tag = document.createElement('meta');
+      tag.setAttribute('property', property);
+      document.head.appendChild(tag);
+    }
+    tag.setAttribute('content', content);
+  };
+
+  setMeta('og:title', title);
+  if (image) {
+    setMeta('og:image', image);
+  }
+};
+
 const getCategoryIcon = (cat) => {
   switch (cat) {
     case 'Tình cảm tuổi học trò': return <Heart size={14} />;
@@ -833,9 +886,56 @@ const CommentSection = ({ comments = [], onAddComment, isAdmin, onDeleteComment,
     }
   };
 
-  // Parse comment content to render GIFs
+  // Parse comment content to render GIFs and convert emojis to Twitter style
   const renderCommentContent = (content) => {
     if (!content) return null;
+    
+    // Helper function to convert emoji to Twitter emoji image
+    const convertEmojiToImage = (text) => {
+      // Regex to match emoji characters (compatible range-based pattern)
+      const emojiRegex = /([\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA70}-\u{1FAFF}])/gu;
+      const parts = [];
+      let lastIndex = 0;
+      let match;
+      
+      while ((match = emojiRegex.exec(text)) !== null) {
+        // Add text before emoji
+        if (match.index > lastIndex) {
+          parts.push(text.slice(lastIndex, match.index));
+        }
+        
+        // Convert emoji to codepoint for Twemoji URL
+        const emoji = match[0];
+        const codePoint = Array.from(emoji)
+          .map(char => char.codePointAt(0).toString(16))
+          .join('-');
+        
+        // Add Twitter emoji image
+        parts.push(
+          <img
+            key={`emoji-${match.index}`}
+            src={`https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/${codePoint}.png`}
+            alt={emoji}
+            style={{
+              width: '1.2em',
+              height: '1.2em',
+              display: 'inline-block',
+              verticalAlign: '-0.15em',
+              margin: '0 0.05em'
+            }}
+          />
+        );
+        
+        lastIndex = match.index + match[0].length;
+      }
+      
+      // Add remaining text
+      if (lastIndex < text.length) {
+        parts.push(text.slice(lastIndex));
+      }
+      
+      return parts.length > 0 ? parts : text;
+    };
     
     // Check for GIF pattern
     const gifRegex = /\[GIF\](.*?)\[\/GIF\]/g;
@@ -844,9 +944,11 @@ const CommentSection = ({ comments = [], onAddComment, isAdmin, onDeleteComment,
     let match;
     
     while ((match = gifRegex.exec(content)) !== null) {
-      // Add text before GIF
+      // Add text before GIF (with emoji conversion)
       if (match.index > lastIndex) {
-        parts.push(<span key={`text-${lastIndex}`}>{content.slice(lastIndex, match.index)}</span>);
+        const textPart = content.slice(lastIndex, match.index);
+        const converted = convertEmojiToImage(textPart);
+        parts.push(<span key={`text-${lastIndex}`}>{converted}</span>);
       }
       // Add GIF
       parts.push(
@@ -865,12 +967,14 @@ const CommentSection = ({ comments = [], onAddComment, isAdmin, onDeleteComment,
       lastIndex = match.index + match[0].length;
     }
     
-    // Add remaining text
+    // Add remaining text (with emoji conversion)
     if (lastIndex < content.length) {
-      parts.push(<span key={`text-end`}>{content.slice(lastIndex)}</span>);
+      const textPart = content.slice(lastIndex);
+      const converted = convertEmojiToImage(textPart);
+      parts.push(<span key={`text-end`}>{converted}</span>);
     }
     
-    return parts.length > 0 ? parts : content;
+    return parts.length > 0 ? parts : convertEmojiToImage(content);
   };
 
   return (
@@ -885,7 +989,14 @@ const CommentSection = ({ comments = [], onAddComment, isAdmin, onDeleteComment,
             : (currentUser ? currentUser.charAt(0).toUpperCase() : <User size={18} color="#fff" />)}
         </div>
         <div style={{ flex: 1, position: 'relative' }}>
-          <textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} onFocus={() => setIsFocused(true)} onBlur={() => setIsFocused(false)} placeholder="Chia sẻ suy nghĩ của bạn..." rows={2} style={{ width: '100%', padding: '10px 0', background: 'transparent', border: 'none', color: '#e4e4e7', fontSize: '15px', resize: 'none', outline: 'none', minHeight: '24px' }} />
+          <textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} onFocus={() => setIsFocused(true)} onBlur={() => setIsFocused(false)} placeholder="Chia sẻ suy nghĩ của bạn..." rows={2} style={{ width: '100%', padding: '10px 0', background: 'transparent', border: 'none', color: newComment ? 'transparent' : '#e4e4e7', fontSize: '15px', resize: 'none', outline: 'none', minHeight: '24px', caretColor: '#e4e4e7' }} />
+          
+          {/* Twitter Emoji Preview */}
+          {newComment && (
+            <div style={{ position: 'absolute', top: '10px', left: '0', right: '0', pointerEvents: 'none', color: '#e4e4e7', fontSize: '15px', lineHeight: '1.5', whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>
+              {renderCommentContent(newComment)}
+            </div>
+          )}
           
           {/* Selected GIF Preview */}
           {selectedGif && (
@@ -1139,7 +1250,7 @@ const CommentSection = ({ comments = [], onAddComment, isAdmin, onDeleteComment,
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '6px' }}>
                         <span style={{ fontSize: '15px', fontWeight: '600', color: '#f4f4f5' }}>{author}</span>
                         <span style={{ fontSize: '12px', color: '#71717a' }}>{time}</span>
-                        {isAdmin && (
+                        {(isAdmin || author === currentUser) && (
                             <button
                                 onClick={() => { if(window.confirm('Xóa bình luận này?')) onDeleteComment(comment.id); }}
                                 style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px', marginLeft: 'auto', color: '#ef4444' }}
@@ -1327,7 +1438,9 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
   const [fontSize, setFontSize] = useState(() => {
     if (typeof window === 'undefined') return 19;
     const saved = localStorage.getItem(FONT_SIZE_KEY);
-    return saved ? parseInt(saved, 10) : 19;
+    if (saved) return parseInt(saved, 10);
+    // Default: 17px for mobile, 19px for PC
+    return window.innerWidth <= 768 ? 17 : 19;
   });
   
   const [fontFamily, setFontFamily] = useState(() => {
@@ -1726,9 +1839,46 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
 
   return (
     <div className="page-transition-enter" style={{ maxWidth: '1200px', margin: '0 auto', padding: 'clamp(20px, 4vw, 40px) clamp(16px, 3vw, 24px) 80px', position: 'relative', zIndex: 10 }}>
-      <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', padding: '10px 20px', borderRadius: '30px', color: '#e5e7eb', cursor: 'pointer', marginBottom: '32px', transition: 'all 0.3s ease', fontSize: '14px', fontWeight: '500', backdropFilter: 'blur(10px)' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'; e.currentTarget.style.transform = 'translateX(-4px)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'; e.currentTarget.style.transform = 'translateX(0)'; }}>
-        <ArrowLeft size={18} /> Quay lại trang chủ
-      </button>
+      {/* Container cho các nút điều hướng */}
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '32px', flexWrap: 'wrap' }}>
+        <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', padding: '10px 20px', borderRadius: '30px', color: '#e5e7eb', cursor: 'pointer', transition: 'all 0.3s ease', fontSize: '14px', fontWeight: '500', backdropFilter: 'blur(10px)' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'; e.currentTarget.style.transform = 'translateX(-4px)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'; e.currentTarget.style.transform = 'translateX(0)'; }}>
+          <ArrowLeft size={18} /> Quay lại trang chủ
+        </button>
+
+        {/* Nút xóa bài cho người tạo (không phải admin) */}
+        {!isAdmin && article.author === currentUser && (
+          <button
+            onClick={() => { 
+              console.log('[DELETE] Article ID:', article.id);
+              console.log('[DELETE] Current User:', currentUser);
+              console.log('[DELETE] Article Author:', article.author);
+              if(window.confirm('Bạn có chắc chắn muốn xóa bài viết này không?')) {
+                console.log('[DELETE] User confirmed, calling onDeleteArticle');
+                onDeleteArticle(article.id); 
+              }
+            }}
+            style={{
+              background: 'rgba(239, 68, 68, 0.15)',
+              color: '#fca5a5',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              padding: '10px 20px',
+              borderRadius: '30px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '14px',
+              fontWeight: '500',
+              transition: 'all 0.25s',
+              backdropFilter: 'blur(10px)'
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.25)'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.5)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)'; }}
+          >
+            <Trash2 size={16} /> Xóa bài
+          </button>
+        )}
+      </div>
 
       {/* --- ADMIN PANEL START --- */}
       {isAdmin && (
@@ -1782,7 +1932,7 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
             </div>
           )}
            
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', padding: '16px 20px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px', backdropFilter: 'blur(10px)' }}>
+          <div className="article-detail-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', padding: '16px 20px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px', backdropFilter: 'blur(10px)' }}>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
               <span style={{ fontSize: '14px', color: '#9ca3af', marginRight: '8px', fontWeight: '500' }}>Chia sẻ:</span>
               <ShareButton
@@ -1790,20 +1940,16 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
                 color="#1877F2"
                 title="Chia sẻ lên Facebook"
                 onClick={() => {
-                  const url = encodeURIComponent(window.location.href);
+                  const url = window.location.href;
                   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-                  const shareChannelUrl = `https://www.facebook.com/share_channel/?type=reshare&link=${encodeURIComponent(url)}&source_surface=external_reshare`;
-
+                  // Use Facebook sharer for better mobile compatibility
+                  const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+                  
                   if (isMobile) {
-                    // Mở app Facebook (nếu có)
-                    window.location.href = `fb://facewebmodal/f?href=${encodeURIComponent(shareChannelUrl)}`;
-
-                    // fallback nếu không mở được app
-                    setTimeout(() => {
-                      window.open(shareChannelUrl, "_blank");
-                    }, 1200);
+                    // Direct to Facebook share dialog
+                    window.open(shareUrl, '_blank');
                   } else {
-                    window.open(shareChannelUrl, "_blank", "width=600,height=500");
+                    window.open(shareUrl, "_blank", "width=600,height=500");
                   }
                 }}
               />
@@ -1851,6 +1997,45 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
                 >
                     <ThumbsDown size={18} fill={userDisliked ? "currentColor" : "none"} />
                 </button>
+                
+                {/* Delete Button - Only show for author */}
+                {currentUser && article.author === currentUser && (
+                  <button
+                    onClick={async () => {
+                      if (window.confirm('Bạn có chắc chắn muốn xóa bài viết này?')) {
+                        await onDeleteArticle(article.id);
+                      }
+                    }}
+                    title="Xóa bài viết"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '8px 16px',
+                      background: 'rgba(239, 68, 68, 0.15)',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      borderRadius: '20px',
+                      color: '#f87171',
+                      cursor: 'pointer',
+                      transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                      fontSize: '14px',
+                      fontWeight: '500'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                      e.currentTarget.style.background = 'rgba(239, 68, 68, 0.25)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.4)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                      e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    <Trash2 size={16} />
+                    <span>Xóa bài</span>
+                  </button>
+                )}
             </div>
           </div>
         </div>
@@ -2000,9 +2185,10 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
             </button>
             <button
               onClick={() => {
-                setFontSize(19);
+                const defaultSize = window.innerWidth <= 768 ? 17 : 19;
+                setFontSize(defaultSize);
                 setFontFamily(FONT_OPTIONS[0].value);
-                localStorage.setItem(FONT_SIZE_KEY, '19');
+                localStorage.setItem(FONT_SIZE_KEY, String(defaultSize));
                 localStorage.setItem(FONT_FAMILY_KEY, FONT_OPTIONS[0].value);
               }}
               title="Đặt lại cỡ chữ và font mặc định"
@@ -2078,10 +2264,25 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
   );
 };
 
-const ArticleDetailRoute = ({ posts, ambientIntensity, scrollY, currentUser, currentAvatar, onSyncArticleViews }) => {
+// QUAN TRỌNG: ĐỪNG XÓA 2 PROPS NÀY - onDeleteArticle và isAdmin CẦN THIẾT cho chức năng xóa!
+const ArticleDetailRoute = ({ posts, ambientIntensity, scrollY, currentUser, currentAvatar, onSyncArticleViews, onDeleteArticle, isAdmin }) => {
   const { id: paramId } = useParams();
   const navigate = useNavigate();
   const queryId = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('id') : null;
+
+  // Update meta tags when article is loaded
+  useEffect(() => {
+    if (posts && (paramId || queryId)) {
+      const found = posts.find(p => String(p.id) === String(paramId || queryId));
+      if (found) {
+        updateMetaTags(found.title, found.image || found.video); // video might be cover too if we want
+      }
+    }
+    // Cleanup: reset title when leaving (optional, sticking to "Eight Ducks" or similar if needed)
+    return () => {
+      document.title = 'Eight Ducks';
+    };
+  }, [posts, paramId, queryId]);
   const id = paramId || queryId;
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -2157,8 +2358,8 @@ const ArticleDetailRoute = ({ posts, ambientIntensity, scrollY, currentUser, cur
               onSyncArticleViews(updated.id, nextViews);
             }
           }}
-          isAdmin={false}
-          onDeleteArticle={() => {}}
+          isAdmin={isAdmin || false}
+          onDeleteArticle={onDeleteArticle || (() => {})}
           onDeleteComment={() => {}}
           currentUser={currentUser}
           currentAvatar={currentAvatar}
@@ -3280,7 +3481,7 @@ const App = () => {
     if ('scrollRestoration' in window.history) {
       window.history.scrollRestoration = 'manual';
     }
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, []);
 
   // Notifications State - INITIALIZED EMPTY as requested
@@ -3565,12 +3766,63 @@ const App = () => {
       setPosts(prev => prev.map(p => p.id === id ? { ...p, view_count: viewCount, views: viewCount } : p));
   };
 
-  const handleDeleteArticle = (articleId) => {
-      const updatedArticles = posts.filter(a => a.id !== articleId);
-      setPosts(updatedArticles);
-      setSelectedArticle(null);
-      navigate('/');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+  const handleDeleteArticle = async (articleId) => {
+      console.log('[handleDeleteArticle] Called with ID:', articleId);
+      if (!articleId) {
+        console.log('[handleDeleteArticle] No article ID provided');
+        return;
+      }
+      if (!supabase) {
+        console.log('[handleDeleteArticle] Supabase not initialized');
+        alert('Chưa kết nối database.');
+        return;
+      }
+      
+      try {
+        console.log('[handleDeleteArticle] Starting delete process...');
+        // Xóa tất cả comments liên quan đến bài đăng này trước
+        const { error: commentsError } = await supabase
+          .from('comments')
+          .delete()
+         .eq('post_id', articleId);
+        
+        if (commentsError) {
+          console.error('[handleDeleteArticle] Error deleting comments:', commentsError);
+          // Tiếp tục xóa bài đăng dù comments không xóa được
+        } else {
+          console.log('[handleDeleteArticle] Comments deleted successfully');
+        }
+        
+        // Xóa bài đăng
+        console.log('[handleDeleteArticle] Deleting post from database...');
+        const { error: postError } = await supabase
+          .from('posts')
+          .delete()
+          .eq('id', articleId);
+        
+        if (postError) {
+          console.error('[handleDeleteArticle] Error deleting post:', postError);
+          throw postError;
+        }
+        
+        console.log('[handleDeleteArticle] Post deleted successfully from database');
+        
+        // Cập nhật state local
+        const updatedArticles = posts.filter(a => a.id !== articleId);
+        setPosts(updatedArticles);
+        setSelectedArticle(null);
+        
+        console.log('[handleDeleteArticle] State updated, navigating to home...');
+        // Navigate về trang chủ
+        navigate('/');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        alert('Đã xóa bài viết thành công!');
+      } catch (err) {
+        console.error('[handleDeleteArticle] Failed to delete article:', err);
+        console.error('[handleDeleteArticle] Error details:', err.message, err.code);
+        alert('Không thể xóa bài viết. Vui lòng thử lại. Lỗi: ' + (err.message || 'Unknown error'));
+      }
   };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -3901,7 +4153,7 @@ const HomeUI = (
       <style>{GLOBAL_STYLES}</style>
       <Routes>
         <Route path="/" element={HomeUI} />
-        <Route path="/post/:id" element={<>{renderNav()}<ArticleDetailRoute posts={posts} ambientIntensity={ambientIntensity} scrollY={scrollY} currentUser={username} currentAvatar={avatar} onSyncArticleViews={handleSyncArticleViews} /></>} />
+        <Route path="/post/:id" element={<>{renderNav()}<ArticleDetailRoute posts={posts} ambientIntensity={ambientIntensity} scrollY={scrollY} currentUser={username} currentAvatar={avatar} onSyncArticleViews={handleSyncArticleViews} onDeleteArticle={handleDeleteArticle} isAdmin={isAdmin} /></>} />
       </Routes>
       <WelcomeModal isOpen={showWelcomeModal} initialName={nameDraft || username} onSubmit={handleSaveName} />
       <CreatePostModal isOpen={showCreatePost} onClose={() => setShowCreatePost(false)} onPost={handleCreatePost} />
