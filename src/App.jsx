@@ -15,6 +15,8 @@ import LightPillar from './LightPillar';
 import GradientText from './components/GradientText';
 import ReactBitsBackground from './components/ReactBitsBackground';
 import LightRays from './components/LightRays';
+import About from './pages/About';
+import Showcase from './pages/Showcase';
 
 // --- 1. GLOBAL CONSTANTS & STYLES ---
 // Supabase storage helper for uploads
@@ -247,7 +249,6 @@ const GLOBAL_STYLES = `
     .mobile-nav-toggle { display: inline-flex; }
     .btn-label { display: none; }
     .create-post-btn { display: none !important; }
-    .profile-name { display: none; }
     nav .logo-wrap { flex-direction: row; }
     .brand-title { font-size: 18px !important; }
     
@@ -832,12 +833,7 @@ const CommentSection = ({ comments = [], onAddComment, isAdmin, onDeleteComment,
   }, [showEmojiPicker]);
 
   // Fetch trending GIFs on open
-  useEffect(() => {
-    if (showGifPicker && gifs.length === 0) {
-      fetchTrendingGifs();
-    }
-  }, [showGifPicker]);
-
+  // Fetch trending GIFs
   const fetchTrendingGifs = async () => {
     setGifLoading(true);
     try {
@@ -849,6 +845,14 @@ const CommentSection = ({ comments = [], onAddComment, isAdmin, onDeleteComment,
     }
     setGifLoading(false);
   };
+
+  useEffect(() => {
+    if (showGifPicker && gifs.length === 0) {
+      fetchTrendingGifs();
+    }
+  }, [showGifPicker]);
+
+
 
   const searchGifs = async (query) => {
     if (!query.trim()) {
@@ -1383,7 +1387,10 @@ const NewsArticle = ({ title, category, excerpt, author, date, created_at, image
       };
       requestAnimationFrame(animate);
     } else {
+      // Avoid setting state synchronously if not needed, or check if value genuinely changed
+      if (displayViews !== baseViews) {
         setDisplayViews(baseViews);
+      }
     }
   }, [isHovered, baseViews]);
 
@@ -1919,34 +1926,6 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
           </div>
         </div>
       )}
-      
-      {/* Owner delete button - only show if device_id matches (non-admin) */}
-      {!isAdmin && article.device_id && article.device_id === currentDeviceId && (
-        <div style={{ marginBottom: '20px' }}>
-          <button
-            onClick={() => { if(window.confirm("Bạn có chắc chắn muốn xóa bài viết này không?")) onDeleteArticle(article.id, article.device_id); }}
-            style={{
-              background: 'rgba(239, 68, 68, 0.15)',
-              color: '#fca5a5',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-              padding: '10px 20px',
-              borderRadius: '30px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.25s',
-              backdropFilter: 'blur(10px)'
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.25)'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.5)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)'; }}
-          >
-            <Trash2 size={16} /> Xóa bài viết của bạn
-          </button>
-        </div>
-      )}
       {/* --- ADMIN PANEL END --- */}
 
       <FadeInSection>
@@ -2306,7 +2285,7 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
 };
 
 // QUAN TRỌNG: ĐỪNG XÓA 2 PROPS NÀY - onDeleteArticle và isAdmin CẦN THIẾT cho chức năng xóa!
-const ArticleDetailRoute = ({ posts, ambientIntensity, scrollY, currentUser, currentAvatar, onSyncArticleViews, onDeleteArticle, isAdmin }) => {
+const ArticleDetailRoute = ({ posts, ambientIntensity, scrollY, currentUser, currentAvatar, onSyncArticleViews, onDeleteArticle, isAdmin, currentDeviceId }) => {
   const { id: paramId } = useParams();
   const navigate = useNavigate();
   const queryId = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('id') : null;
@@ -2404,6 +2383,7 @@ const ArticleDetailRoute = ({ posts, ambientIntensity, scrollY, currentUser, cur
           onDeleteComment={() => {}}
           currentUser={currentUser}
           currentAvatar={currentAvatar}
+          currentDeviceId={currentDeviceId}
         />
       </div>
     </div>
@@ -2605,14 +2585,14 @@ const VideoShowcase = () => {
       margin: '16px auto 0',
       padding: '0 16px',
       fontSize: '12px',
-      color: '#71717a',
-      fontFamily: "'Georgia', serif",
+      color: '#83838fff',
+      fontFamily: "'Playfair Display', serif",
       fontStyle: 'italic',
       lineHeight: '1.6',
       textAlign: 'center',
       opacity: 0.7
     }}>
-      YouTube: https://www.youtube.com/watch?v=BIC7yFjTucs
+      "Một phần thanh xuân tươi đẹp," YouTube, đăng bởi Halay Wedding, 2024, https://www.youtube.com/watch?v=BIC7yFjTucs
     </div>
     </>
   );
@@ -2623,7 +2603,10 @@ const WelcomeModal = ({ isOpen, initialName = '', onSubmit }) => {
   const [name, setName] = useState(initialName);
 
   useEffect(() => {
-    if (isOpen) setName(initialName || '');
+    // Only update if opening and name is different to avoid cascading renders
+    if (isOpen && name !== (initialName || '')) {
+      setName(initialName || '');
+    }
   }, [isOpen, initialName]);
 
   if (!isOpen) return null;
@@ -2723,6 +2706,15 @@ const CreatePostModal = ({ isOpen, onClose, onPost }) => {
         setFormatState({ bold: false, italic: false, underline: false, ul: false });
     }
   }, [isOpen]);
+
+  const refreshFormatState = () => {
+    setFormatState({
+      bold: document.queryCommandState('bold'),
+      italic: document.queryCommandState('italic'),
+      underline: document.queryCommandState('underline'),
+      ul: document.queryCommandState('insertUnorderedList')
+    });
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -3225,14 +3217,7 @@ const CreatePostModal = ({ isOpen, onClose, onPost }) => {
     refreshFormatState();
   };
 
-  const refreshFormatState = () => {
-    setFormatState({
-      bold: document.queryCommandState('bold'),
-      italic: document.queryCommandState('italic'),
-      underline: document.queryCommandState('underline'),
-      ul: document.queryCommandState('insertUnorderedList')
-    });
-  };
+
 
   // Handle Post Submission
   const handleSubmit = async () => {
@@ -3554,6 +3539,13 @@ const App = () => {
   const avatarIsImage = avatar && (avatar.startsWith('data:') || avatar.startsWith('http'));
   const avatarFallback = username ? username.charAt(0).toUpperCase() : 'B';
 
+  // Helper function to truncate username for display
+  const truncateUsername = (name, maxLength) => {
+    if (!name) return '';
+    if (name.length <= maxLength) return name;
+    return name.substring(0, maxLength) + '...';
+  };
+
   const fetchPosts = async () => {
     if (!supabase) {
       console.error("Supabase client missing. Kiểm tra biến môi trường VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY.");
@@ -3578,6 +3570,19 @@ const App = () => {
   };
 
   useEffect(() => { setTimeout(() => setMounted(true), 100); }, []);
+
+  // Detect navigation state to open create post modal (e.g., from About page)
+  useEffect(() => {
+    if (location.state?.openCreatePost) {
+      setShowCreatePost(true);
+      // Scroll to top of page
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Clear the state to prevent reopening on refresh
+      window.history.replaceState({}, document.title);
+    }
+    // Reset hover state on any navigation to prevent stuck hover
+    setHoveredNav(null);
+  }, [location]);
 
   useEffect(() => {
     const storedName = localStorage.getItem(BRAND.storageKey);
@@ -3684,29 +3689,54 @@ const App = () => {
 
   useEffect(() => {
     const handleScroll = () => {
-      const scrollPosition = window.scrollY;
+      // Only update active nav on home page scroll
+      if (window.location.pathname !== '/') return;
+
       const videoSection = document.getElementById('video-section');
       const articlesSection = document.getElementById('articles-section');
       
+      const scrollPosition = window.scrollY;
       const videoOffset = videoSection ? videoSection.offsetTop - 150 : 9999;
       const articlesOffset = articlesSection ? articlesSection.offsetTop - 150 : 9999;
 
-      if (scrollPosition < 200) { setActiveNav('Trang chủ'); } 
-      else if (scrollPosition >= videoOffset && scrollPosition < articlesOffset) { setActiveNav('Video'); } 
-      else if (scrollPosition >= articlesOffset) { setActiveNav('Tin tức'); }
+      let newActive = 'Trang chủ';
+      if (scrollPosition < 200) { newActive = 'Trang chủ'; } 
+      else if (scrollPosition >= videoOffset && scrollPosition < articlesOffset) { newActive = 'Video'; } 
+      else if (scrollPosition >= articlesOffset) { newActive = 'Tin tức'; }
+      
+      setActiveNav(prev => prev !== newActive ? newActive : prev);
     };
+
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Update activeNav based on current path
+  useEffect(() => {
+    const path = location.pathname;
+    if (path === '/') {
+      setActiveNav('Trang chủ');
+    } else if (path === '/showcase') {
+      setActiveNav('Showcase');
+    } else if (path === '/about') {
+      setActiveNav('Giới thiệu');
+    }
+  }, [location.pathname]);
+
   useEffect(() => { if (isSearchOpen && searchInputRef.current) searchInputRef.current.focus(); }, [isSearchOpen]);
 
   const categories = ['Tất cả', 'Tình cảm tuổi học trò', 'Ký ức ước mơ', 'Chia sẻ cảm hứng','Góc tâm sự', 'Chuyện lớp mình'];
-  const navItems = ['Trang chủ', 'Tin tức', 'Video'];
+  const navItems = ['Trang chủ', 'Tin tức', 'Video', 'Showcase', 'Giới thiệu'];
 
   const handleSaveName = async (newName) => {
     const trimmed = newName.trim();
     if (!trimmed) return;
+    
+    // Limit username to 50 characters
+    if (trimmed.length > 50) {
+      alert('Tên không được vượt quá 50 ký tự!');
+      return;
+    }
     
     if (!supabase) {
       // Fallback if no Supabase - just save locally
@@ -3825,14 +3855,30 @@ const App = () => {
 
   const handleNavClick = (item) => {
     setActiveNav(item);
+    
+    // Handle About page navigation
+    if (item === 'Giới thiệu') {
+      navigate('/about');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // Handle Showcase page navigation
+    if (item === 'Showcase') {
+      navigate('/showcase');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    
     const target =
       item === 'Trang chủ' ? 'top' :
       item === 'Video' ? 'video' :
       item === 'Tin tức' ? 'articles' : null;
 
     const isPostRoute = location.pathname.startsWith('/post');
+    const isOtherRoute = location.pathname !== '/';
 
-    if (isPostRoute) {
+    if (isPostRoute || isOtherRoute) {
       if (target) setPendingScrollTarget(target);
       navigate('/');
       return;
@@ -4080,7 +4126,23 @@ const App = () => {
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', position: 'relative' }}>
               
               {/* === CREATE POST BUTTON (DESKTOP) === */}
-              <button className="create-post-btn" onClick={() => setShowCreatePost(true)} style={{ padding: '8px 16px', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1))', border: '1px solid rgba(139, 92, 246, 0.2)', borderRadius: '8px', color: '#a78bfa', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'all 300ms', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <button 
+                className="create-post-btn" 
+                onClick={() => {
+                  if (window.location.pathname !== '/') {
+                    navigate('/');
+                    // We use setTimeout to ensure navigation completes before opening modal, 
+                    // or we can pass state. But relying on state in location is better.
+                    // However, we already listen to location state in HomeUI? No.
+                    // Let's just set timeout or pass state.
+                    // Actually, modifying `HomeUI` to check location.state might be cleaner but complicated.
+                    // Simple approach: Navigate then open.
+                    setTimeout(() => setShowCreatePost(true), 100);
+                  } else {
+                    setShowCreatePost(true); 
+                  }
+                }} 
+                style={{ padding: '8px 16px', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1))', border: '1px solid rgba(139, 92, 246, 0.2)', borderRadius: '8px', color: '#a78bfa', fontSize: '13px', fontWeight: '600', cursor: 'pointer', transition: 'all 300ms', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Plus size={16} /> <span className="btn-label">Đăng bài</span>
               </button>
               
@@ -4134,11 +4196,11 @@ const App = () => {
                       ? <img src={avatar} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       : (avatarFallback || <User size={16} />)}
                   </div>
-                  <span style={{ fontSize: '14px', fontWeight: 600, whiteSpace: 'nowrap' }}>{username || 'Bạn mới'}</span>
+                  <span className="profile-name" style={{ fontSize: '14px', fontWeight: 600, whiteSpace: 'nowrap' }}>{truncateUsername(username || 'Bạn mới', 7)}</span>
                 </button>
                 {profileMenuOpen && (
                   <div style={{ position: 'absolute', top: 'calc(100% + 10px)', right: 0, background: 'rgba(15,15,20,0.96)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', boxShadow: '0 20px 40px rgba(0,0,0,0.45)', width: '220px', padding: '12px', zIndex: 20 }}>
-                    <div style={{ fontSize: '13px', color: '#a1a1aa', marginBottom: '10px' }}>Xin chào, {username || 'bạn mới'}!</div>
+                    <div style={{ fontSize: '13px', color: '#a1a1aa', marginBottom: '10px' }}>Xin chào, {truncateUsername(username || 'bạn mới', 18)}!</div>
                     <button onClick={handleOpenRename} style={{ width: '100%', padding: '10px', borderRadius: '10px', border: `1px solid ${BRAND.border}`, background: 'rgba(255,255,255,0.03)', color: '#e5e7eb', cursor: 'pointer', marginBottom: '8px' }}>Đổi tên</button>
                     <button onClick={handleOpenAvatar} style={{ width: '100%', padding: '10px', borderRadius: '10px', border: `1px solid ${BRAND.border}`, background: 'rgba(255,255,255,0.03)', color: '#e5e7eb', cursor: 'pointer', marginBottom: '8px' }}>Đổi avatar</button>
                     <button onClick={handleLogout} style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid rgba(239,68,68,0.25)', background: 'rgba(239,68,68,0.08)', color: '#fca5a5', cursor: 'pointer' }}>Đăng xuất</button>
@@ -4374,7 +4436,9 @@ const HomeUI = (
       <style>{GLOBAL_STYLES}</style>
       <Routes>
         <Route path="/" element={HomeUI} />
-        <Route path="/post/:id" element={<>{renderNav()}<ArticleDetailRoute posts={posts} ambientIntensity={ambientIntensity} scrollY={scrollY} currentUser={username} currentAvatar={avatar} onSyncArticleViews={handleSyncArticleViews} onDeleteArticle={handleDeleteArticle} isAdmin={isAdmin} /></>} />
+        <Route path="/about" element={<About />} />
+        <Route path="/showcase" element={<>{renderNav()}<Showcase /></>} />
+        <Route path="/post/:id" element={<>{renderNav()}<ArticleDetailRoute posts={posts} ambientIntensity={ambientIntensity} scrollY={scrollY} currentUser={username} currentAvatar={avatar} onSyncArticleViews={handleSyncArticleViews} onDeleteArticle={handleDeleteArticle} isAdmin={isAdmin} currentDeviceId={deviceId} /></>} />
       </Routes>
       <WelcomeModal isOpen={showWelcomeModal} initialName={nameDraft || username} onSubmit={handleSaveName} />
       <CreatePostModal isOpen={showCreatePost} onClose={() => setShowCreatePost(false)} onPost={handleCreatePost} />
