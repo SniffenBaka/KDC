@@ -2592,7 +2592,7 @@ const VideoShowcase = () => {
       textAlign: 'center',
       opacity: 0.7
     }}>
-      "Một phần thanh xuân tươi đẹp," YouTube, đăng bởi Halay Wedding, 14/07/2024, https://www.youtube.com/watch?v=BIC7yFjTucs
+      "Một phần thanh xuân tươi đẹp," YouTube, Uploaded by Halay Wedding, 14 Jul 2024, https://www.youtube.com/watch?v=BIC7yFjTucs
     </div>
     </>
   );
