@@ -518,7 +518,7 @@ const getCategoryIcon = (cat) => {
   switch (cat) {
     case 'Tình cảm tuổi học trò': return <Heart size={14} />;
     case 'Ký ức ước mơ': return <Sparkles size={14} />;
-    case 'Chia sẻ cảm hứng': return <Lightbulb size={14} />;
+    case 'Khảo sát': return <Pencil size={14} />;
     case 'Góc tâm sự': return <BookOpen size={14} />;
     case 'Chuyện lớp mình': return <Pencil size={14} />;
     default: return null; 
@@ -2592,7 +2592,7 @@ const VideoShowcase = () => {
       textAlign: 'center',
       opacity: 0.7
     }}>
-      "Một phần thanh xuân tươi đẹp," YouTube, đăng bởi Halay Wedding, 2024, https://www.youtube.com/watch?v=BIC7yFjTucs
+      "Một phần thanh xuân tươi đẹp," YouTube, đăng bởi Halay Wedding, 14/07/2024, https://www.youtube.com/watch?v=BIC7yFjTucs
     </div>
     </>
   );
@@ -3310,7 +3310,7 @@ const CreatePostModal = ({ isOpen, onClose, onPost }) => {
             <select value={category} onChange={(e) => setCategory(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: '#18181b', border: '1px solid #27272a', borderRadius: '8px', color: '#f4f4f5', fontSize: '14px', outline: 'none', transition: 'border 0.2s' }}>
               <option value="Tình cảm tuổi học trò">Tình cảm tuổi học trò</option>
               <option value="Ký ức ước mơ">Ký ức ước mơ</option>
-              <option value="Chia sẻ cảm hứng">Chia sẻ cảm hứng</option>
+              <option value="Khảo sát">Khảo sát</option>
               <option value="Góc tâm sự">Góc tâm sự</option>
               <option value="Chuyện lớp mình">Chuyện lớp mình</option>
             </select>
@@ -3725,7 +3725,7 @@ const App = () => {
 
   useEffect(() => { if (isSearchOpen && searchInputRef.current) searchInputRef.current.focus(); }, [isSearchOpen]);
 
-  const categories = ['Tất cả', 'Tình cảm tuổi học trò', 'Ký ức ước mơ', 'Chia sẻ cảm hứng','Góc tâm sự', 'Chuyện lớp mình'];
+  const categories = ['Tất cả', 'Tình cảm tuổi học trò', 'Ký ức ước mơ', 'Khảo sát','Góc tâm sự', 'Chuyện lớp mình'];
   const navItems = ['Trang chủ', 'Tin tức', 'Video', 'Showcase', 'Giới thiệu'];
 
   const handleSaveName = async (newName) => {
