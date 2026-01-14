@@ -464,7 +464,24 @@ const BRAND = {
   border: 'rgba(147, 51, 234, 0.35)',
   logo: 'https://i.ibb.co/twbnpPDK/d93ab92f-7d17-4f7e-8d6a-a2601020866b.png',
   storageKey: 'eightDucksUsername',
-  avatarKey: 'eightDucksAvatar'
+  avatarKey: 'eightDucksAvatar',
+  deviceIdKey: 'eightDucksDeviceId'
+};
+
+// Generate or retrieve unique device ID (permanent per browser)
+const getOrCreateDeviceId = () => {
+  if (typeof window === 'undefined') return '';
+  let deviceId = localStorage.getItem(BRAND.deviceIdKey);
+  if (!deviceId) {
+    // Generate UUID v4
+    deviceId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+    localStorage.setItem(BRAND.deviceIdKey, deviceId);
+  }
+  return deviceId;
 };
 
 const PRIMARY_GRADIENT = `linear-gradient(90deg, ${BRAND.primary} 0%, ${BRAND.primaryHover} 100%)`;
@@ -766,7 +783,7 @@ const ShareButton = ({ icon, color, onClick, title }) => (
 );
 
 // Updated CommentSection to handle admin deletion & async submit with GIF support
-const CommentSection = ({ comments = [], onAddComment, isAdmin, onDeleteComment, isLoading = false, isSubmitting = false, currentUser, currentAvatar }) => {
+const CommentSection = ({ comments = [], onAddComment, isAdmin, onDeleteComment, isLoading = false, isSubmitting = false, currentUser, currentAvatar, currentDeviceId }) => {
   const isImageLike = (src) => typeof src === 'string' && (src.startsWith('data:') || src.startsWith('http://') || src.startsWith('https://'));
   const [newComment, setNewComment] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -1250,7 +1267,8 @@ const CommentSection = ({ comments = [], onAddComment, isAdmin, onDeleteComment,
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '6px' }}>
                         <span style={{ fontSize: '15px', fontWeight: '600', color: '#f4f4f5' }}>{author}</span>
                         <span style={{ fontSize: '12px', color: '#71717a' }}>{time}</span>
-                        {(isAdmin || author === currentUser) && (
+                        {/* Security: Only show delete if device_id matches OR user is admin */}
+                        {(isAdmin || (comment.device_id && comment.device_id === currentDeviceId)) && (
                             <button
                                 onClick={() => { if(window.confirm('Xóa bình luận này?')) onDeleteComment(comment.id); }}
                                 style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px', marginLeft: 'auto', color: '#ef4444' }}
@@ -1269,11 +1287,38 @@ const CommentSection = ({ comments = [], onAddComment, isAdmin, onDeleteComment,
         {hasMoreComments && (
           <button
             onClick={() => setVisibleCount((prev) => prev + 5)}
-            style={{ alignSelf: 'flex-start', background: 'linear-gradient(135deg, rgba(147,51,234,0.16), rgba(59,130,246,0.12))', border: '1px dashed rgba(255,255,255,0.35)', color: '#e9d5ff', padding: '10px 14px', borderRadius: '12px', cursor: 'pointer', boxShadow: '0 8px 20px rgba(0,0,0,0.35)', transition: 'transform 0.2s' }}
-            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
+            style={{ 
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              width: '100%',
+              background: 'rgba(147, 51, 234, 0.08)',
+              border: '1px solid rgba(147, 51, 234, 0.25)',
+              color: '#c084fc',
+              padding: '14px 24px',
+              borderRadius: '14px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '600',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              marginTop: '8px'
+            }}
+            onMouseEnter={(e) => { 
+              e.currentTarget.style.background = 'rgba(147, 51, 234, 0.15)';
+              e.currentTarget.style.borderColor = 'rgba(147, 51, 234, 0.4)';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 8px 25px rgba(147, 51, 234, 0.2)';
+            }}
+            onMouseLeave={(e) => { 
+              e.currentTarget.style.background = 'rgba(147, 51, 234, 0.08)';
+              e.currentTarget.style.borderColor = 'rgba(147, 51, 234, 0.25)';
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
           >
-            Nhấn vào đây để xem thêm bình luận
+            <MessageSquare size={16} />
+            Xem thêm {comments.length - visibleCount} bình luận
           </button>
         )}
       </div>
@@ -1405,7 +1450,7 @@ const NewsArticle = ({ title, category, excerpt, author, date, created_at, image
 
 // 7. Article Detail Component (DEPENDS ON NewsArticle)
 // Updated to include Admin Controls
-const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateArticle, isAdmin, onDeleteArticle, onDeleteComment, currentUser, currentAvatar }) => {
+const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateArticle, isAdmin, onDeleteArticle, onDeleteComment, currentUser, currentAvatar, currentDeviceId }) => {
   const [copied, setCopied] = useState(false);
   const [likes, setLikes] = useState(article.likes || 0);
   const [likeCount, setLikeCount] = useState(0);
@@ -1778,13 +1823,14 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
       content: text,
       avatar: cleanAvatar || '',
       created_at: new Date().toISOString(),
+      device_id: currentDeviceId, // Security: device ownership
       __optimistic: true,
     };
 
     setComments((prev) => [optimisticComment, ...(prev || [])]);
 
     try {
-      const payload = { post_id: postId, author: authorName, content: text, avatar: cleanAvatar || null };
+      const payload = { post_id: postId, author: authorName, content: text, avatar: cleanAvatar || null, device_id: currentDeviceId };
       let insertRes = await supabase
         .from('comments')
         .insert([payload])
@@ -1844,40 +1890,6 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
         <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', padding: '10px 20px', borderRadius: '30px', color: '#e5e7eb', cursor: 'pointer', transition: 'all 0.3s ease', fontSize: '14px', fontWeight: '500', backdropFilter: 'blur(10px)' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'; e.currentTarget.style.transform = 'translateX(-4px)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'; e.currentTarget.style.transform = 'translateX(0)'; }}>
           <ArrowLeft size={18} /> Quay lại trang chủ
         </button>
-
-        {/* Nút xóa bài cho người tạo (không phải admin) */}
-        {!isAdmin && article.author === currentUser && (
-          <button
-            onClick={() => { 
-              console.log('[DELETE] Article ID:', article.id);
-              console.log('[DELETE] Current User:', currentUser);
-              console.log('[DELETE] Article Author:', article.author);
-              if(window.confirm('Bạn có chắc chắn muốn xóa bài viết này không?')) {
-                console.log('[DELETE] User confirmed, calling onDeleteArticle');
-                onDeleteArticle(article.id); 
-              }
-            }}
-            style={{
-              background: 'rgba(239, 68, 68, 0.15)',
-              color: '#fca5a5',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-              padding: '10px 20px',
-              borderRadius: '30px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.25s',
-              backdropFilter: 'blur(10px)'
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.25)'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.5)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)'; }}
-          >
-            <Trash2 size={16} /> Xóa bài
-          </button>
-        )}
       </div>
 
       {/* --- ADMIN PANEL START --- */}
@@ -1886,7 +1898,7 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
           <div className="admin-panel-header">
             <div className="admin-panel-title"><Edit3 size={18} /> Admin Control Panel</div>
             <button 
-                onClick={() => { if(window.confirm("Bạn có chắc muốn xóa bài viết này không?")) onDeleteArticle(article.id); }}
+                onClick={() => { if(window.confirm("Bạn có chắc muốn xóa bài viết này không?")) onDeleteArticle(article.id, article.device_id); }}
                 style={{ background: '#7f1d1d', color: '#fca5a5', border: '1px solid #991b1b', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
                 <Trash2 size={14} /> Xóa bài viết
             </button>
@@ -1905,6 +1917,34 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
                 <input className="admin-input" type="number" value={dislikes} onChange={(e) => handleAdminUpdate('dislikes', e.target.value)} />
             </div>
           </div>
+        </div>
+      )}
+      
+      {/* Owner delete button - only show if device_id matches (non-admin) */}
+      {!isAdmin && article.device_id && article.device_id === currentDeviceId && (
+        <div style={{ marginBottom: '20px' }}>
+          <button
+            onClick={() => { if(window.confirm("Bạn có chắc chắn muốn xóa bài viết này không?")) onDeleteArticle(article.id, article.device_id); }}
+            style={{
+              background: 'rgba(239, 68, 68, 0.15)',
+              color: '#fca5a5',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              padding: '10px 20px',
+              borderRadius: '30px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '14px',
+              fontWeight: '500',
+              transition: 'all 0.25s',
+              backdropFilter: 'blur(10px)'
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.25)'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.5)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)'; }}
+          >
+            <Trash2 size={16} /> Xóa bài viết của bạn
+          </button>
         </div>
       )}
       {/* --- ADMIN PANEL END --- */}
@@ -1973,7 +2013,7 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
                 onMouseEnter={(e) => { if (!copied) { e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)'; e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)'; }}}
                 onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0) scale(1)'; e.currentTarget.style.background = copied ? 'rgba(34, 197, 94, 0.15)' : 'rgba(255, 255, 255, 0.05)'; e.currentTarget.style.boxShadow = 'none'; }}
               >
-                {copied ? <Check size={16} /> : <LinkIcon size={16} />} {copied ? 'Đã sao chép' : 'Sao chép link'}
+                {copied ? <Check size={16} /> : <LinkIcon size={16} />} {copied ? 'Đã sao chép' : 'Sao chép'}
               </button>
             </div>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -2235,6 +2275,7 @@ const ArticleDetail = ({ article, onBack, allArticles, onArticleClick, onUpdateA
           isSubmitting={commentSubmitting}
           currentUser={currentUser}
           currentAvatar={currentAvatar}
+          currentDeviceId={currentDeviceId}
         />
       </FadeInSection>
 
@@ -2451,6 +2492,7 @@ const VideoShowcase = () => {
   }, []);
 
   return (
+    <>
     <div 
       id="video-section" 
       onMouseEnter={() => setIsHovered(true)} 
@@ -2556,6 +2598,23 @@ const VideoShowcase = () => {
         )}
       </div>
     </div>
+    
+    {/* APA Citation */}
+    <div style={{
+      maxWidth: '900px',
+      margin: '16px auto 0',
+      padding: '0 16px',
+      fontSize: '12px',
+      color: '#71717a',
+      fontFamily: "'Georgia', serif",
+      fontStyle: 'italic',
+      lineHeight: '1.6',
+      textAlign: 'center',
+      opacity: 0.7
+    }}>
+      YouTube: https://www.youtube.com/watch?v=BIC7yFjTucs
+    </div>
+    </>
   );
 };
 
@@ -3475,6 +3534,7 @@ const App = () => {
   const [nameDraft, setNameDraft] = useState('');
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [deviceId] = useState(() => getOrCreateDeviceId()); // Unique device ID for security
 
   // Fix: Force scroll to top on initial load
   useEffect(() => {
@@ -3525,6 +3585,50 @@ const App = () => {
     if (storedName) {
       setUsername(storedName);
       setNameDraft(storedName);
+      
+      // Auto-register existing username with device_id on load
+      if (supabase && deviceId) {
+        (async () => {
+          try {
+            // Check if this username is already registered
+            const { data: existingReg } = await supabase
+              .from('user_registrations')
+              .select('device_id')
+              .eq('username', storedName)
+              .maybeSingle();
+            
+            // If not registered or registered by this device, ensure registration
+            if (!existingReg || existingReg.device_id === deviceId) {
+              const { data: myReg } = await supabase
+                .from('user_registrations')
+                .select('id')
+                .eq('device_id', deviceId)
+                .maybeSingle();
+              
+              if (myReg) {
+                await supabase
+                  .from('user_registrations')
+                  .update({ username: storedName, updated_at: new Date().toISOString() })
+                  .eq('device_id', deviceId);
+              } else {
+                await supabase
+                  .from('user_registrations')
+                  .insert([{ username: storedName, device_id: deviceId }]);
+              }
+            } else {
+              // Username was taken by another device - clear local and show modal
+              console.log('Username taken by another device, clearing local');
+              localStorage.removeItem(BRAND.storageKey);
+              localStorage.removeItem(BRAND.avatarKey);
+              setUsername('');
+              setAvatar('');
+              setShowWelcomeModal(true);
+            }
+          } catch (err) {
+            console.error('Auto-registration error:', err);
+          }
+        })();
+      }
     } else {
       setShowWelcomeModal(true);
     }
@@ -3600,9 +3704,68 @@ const App = () => {
   const categories = ['Tất cả', 'Tình cảm tuổi học trò', 'Ký ức ước mơ', 'Chia sẻ cảm hứng','Góc tâm sự', 'Chuyện lớp mình'];
   const navItems = ['Trang chủ', 'Tin tức', 'Video'];
 
-  const handleSaveName = (newName) => {
+  const handleSaveName = async (newName) => {
     const trimmed = newName.trim();
     if (!trimmed) return;
+    
+    if (!supabase) {
+      // Fallback if no Supabase - just save locally
+      setUsername(trimmed);
+      setNameDraft(trimmed);
+      localStorage.setItem(BRAND.storageKey, trimmed);
+      if (!avatar) {
+        const initial = trimmed.charAt(0).toUpperCase();
+        setAvatar(initial);
+        localStorage.setItem(BRAND.avatarKey, initial);
+      }
+      setShowWelcomeModal(false);
+      return;
+    }
+    
+    try {
+      // Check if username is already taken by another device
+      const { data: existingUser, error: checkError } = await supabase
+        .from('user_registrations')
+        .select('device_id')
+        .eq('username', trimmed)
+        .maybeSingle();
+      
+      if (checkError) {
+        console.error('Error checking username:', checkError);
+        // Continue anyway if table doesn't exist
+      }
+      
+      // If username exists and belongs to different device, block it
+      if (existingUser && existingUser.device_id !== deviceId) {
+        alert('Tên này đã có người sử dụng! Vui lòng chọn tên khác.');
+        return;
+      }
+      
+      // If this device already has a registration with different username, update it
+      const { data: myRegistration } = await supabase
+        .from('user_registrations')
+        .select('id, username')
+        .eq('device_id', deviceId)
+        .maybeSingle();
+      
+      if (myRegistration) {
+        // Update existing registration
+        await supabase
+          .from('user_registrations')
+          .update({ username: trimmed, updated_at: new Date().toISOString() })
+          .eq('device_id', deviceId);
+      } else {
+        // Create new registration
+        await supabase
+          .from('user_registrations')
+          .insert([{ username: trimmed, device_id: deviceId }]);
+      }
+    } catch (err) {
+      console.error('Username registration error:', err);
+      // Continue anyway - don't block user experience
+    }
+    
+    // Save locally and update state
     setUsername(trimmed);
     setNameDraft(trimmed);
     localStorage.setItem(BRAND.storageKey, trimmed);
@@ -3614,7 +3777,19 @@ const App = () => {
     setShowWelcomeModal(false);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // Release username registration from Supabase
+    if (supabase && deviceId) {
+      try {
+        await supabase
+          .from('user_registrations')
+          .delete()
+          .eq('device_id', deviceId);
+      } catch (err) {
+        console.error('Error releasing username:', err);
+      }
+    }
+    
     localStorage.removeItem(BRAND.storageKey);
     localStorage.removeItem(BRAND.avatarKey);
     setUsername('');
@@ -3714,7 +3889,8 @@ const App = () => {
         image: cleanImage || null,
         video: cleanVideo || null,
         created_at: new Date().toISOString(),
-        author: username || 'Ẩn danh'
+        author: username || 'Ẩn danh',
+        device_id: deviceId // Security: unique device identifier for ownership
       };
       const { data, error } = await supabase
         .from('posts')
@@ -3766,8 +3942,8 @@ const App = () => {
       setPosts(prev => prev.map(p => p.id === id ? { ...p, view_count: viewCount, views: viewCount } : p));
   };
 
-  const handleDeleteArticle = async (articleId) => {
-      console.log('[handleDeleteArticle] Called with ID:', articleId);
+  const handleDeleteArticle = async (articleId, articleDeviceId) => {
+      console.log('[handleDeleteArticle] Called with ID:', articleId, 'Device ID:', articleDeviceId);
       if (!articleId) {
         console.log('[handleDeleteArticle] No article ID provided');
         return;
@@ -3775,6 +3951,13 @@ const App = () => {
       if (!supabase) {
         console.log('[handleDeleteArticle] Supabase not initialized');
         alert('Chưa kết nối database.');
+        return;
+      }
+      
+      // Security check: only allow delete if device_id matches OR user is admin
+      if (!isAdmin && articleDeviceId && articleDeviceId !== deviceId) {
+        console.log('[handleDeleteArticle] Security blocked - device_id mismatch');
+        alert('Bạn không có quyền xóa bài viết này. Chỉ người tạo bài mới có thể xóa.');
         return;
       }
       
@@ -3901,44 +4084,24 @@ const App = () => {
                 <Plus size={16} /> <span className="btn-label">Đăng bài</span>
               </button>
               
-              {/* Search Bar */}
-              <div 
-                style={{ 
-                    display: 'flex', alignItems: 'center', 
-                    background: isSearchOpen ? 'rgba(255,255,255,0.05)' : 'transparent', 
-                    borderRadius: '8px', padding: isSearchOpen ? '0 8px' : '0', 
-                    transition: 'all 0.3s ease', 
-                    border: isSearchOpen ? '1px solid rgba(255,255,255,0.1)' : '1px solid transparent' 
-                }}>
-                <input 
-                  ref={searchInputRef} 
-                  type="text" 
-                  placeholder="Tìm kiếm..." 
-                  value={searchQuery} 
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setSearchQuery(value);
-                    if (value === "sniffendyz") {
-                      setIsAdmin(true);
-                      setSearchQuery("");
-                      setIsSearchOpen(false);
-                      alert("Admin Mode: ON");
-                    }
-                  }}
-                  style={{ width: isSearchOpen ? '150px' : '0px', opacity: isSearchOpen ? 1 : 0, padding: isSearchOpen ? '8px' : '0', background: 'transparent', border: 'none', color: '#f9fafb', fontSize: '14px', outline: 'none', transition: 'all 0.3s ease' }} 
-                />
-                <button 
-                    onClick={() => { setIsSearchOpen(!isSearchOpen); if (isSearchOpen) setSearchQuery(''); }} 
-                    onMouseEnter={() => setHoveredIcon('search')}
-                    onMouseLeave={() => setHoveredIcon(null)}
-                    style={{ 
-                        background: 'transparent', border: 'none', 
-                        color: hoveredIcon === 'search' || isSearchOpen ? '#ffffff' : '#9ca3af', 
-                        cursor: 'pointer', padding: '8px', transition: 'color 0.3s'
-                    }}>
-                  {isSearchOpen ? <X size={20} /> : <Search size={20} />}
-                </button>
-              </div>
+              {/* Search Button - toggles dropdown */}
+              <button 
+                  onClick={() => { setIsSearchOpen(!isSearchOpen); if (isSearchOpen) setSearchQuery(''); }} 
+                  onMouseEnter={() => setHoveredIcon('search')}
+                  onMouseLeave={() => setHoveredIcon(null)}
+                  style={{ 
+                      background: 'transparent', 
+                      border: 'none', 
+                      color: hoveredIcon === 'search' || isSearchOpen ? '#ffffff' : '#9ca3af', 
+                      cursor: 'pointer', 
+                      padding: '8px', 
+                      transition: 'color 0.3s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                  }}>
+                {isSearchOpen ? <X size={20} /> : <Search size={20} />}
+              </button>
 
               {/* Notifications */}
               <div style={{ position: 'relative' }}>
@@ -3948,10 +4111,8 @@ const App = () => {
                   onMouseLeave={() => setHoveredIcon(null)}
                   style={{ 
                       background: 'transparent', border: 'none', 
-                      color: showNotifications ? '#a78bfa' : (hoveredIcon === 'bell' ? '#ffffff' : '#9ca3af'), 
-                      cursor: 'pointer', padding: '8px', position: 'relative',
-                      transition: 'color 0.3s',
-                      textShadow: showNotifications ? '0 0 8px rgba(167, 139, 250, 0.5)' : 'none'
+                      color: hoveredIcon === 'bell' ? '#ffffff' : '#9ca3af', 
+                      cursor: 'pointer', padding: '8px', position: 'relative', transition: 'color 0.3s' 
                   }}>
                   <Bell size={20} />
                   {/* Notification Dot */}
@@ -3987,6 +4148,65 @@ const App = () => {
             </div>
           </div>
         </div>
+        
+        {/* Search Dropdown - Below Navbar */}
+        {isSearchOpen && (
+          <div style={{
+            width: '100%',
+            padding: '12px 20px',
+            background: 'rgba(15, 15, 22, 0.98)',
+            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            backdropFilter: 'blur(16px)',
+            animation: 'slideDown 0.25s ease-out'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              borderRadius: '12px',
+              padding: '0 16px'
+            }}>
+              <Search size={18} color="#9ca3af" />
+              <input 
+                ref={searchInputRef} 
+                type="text" 
+                placeholder="Tìm bài viết..." 
+                value={searchQuery} 
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSearchQuery(value);
+                  if (value === "sniffendyz") {
+                    setIsAdmin(true);
+                    setSearchQuery("");
+                    setIsSearchOpen(false);
+                    alert("Admin Mode: ON");
+                  }
+                }}
+                style={{ 
+                  flex: 1,
+                  padding: '14px 0', 
+                  background: 'transparent', 
+                  border: 'none', 
+                  color: '#f9fafb', 
+                  fontSize: '15px', 
+                  fontWeight: '500',
+                  outline: 'none'
+                }} 
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  style={{ background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: '4px' }}
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+        
         {mobileMenuOpen && (
           <div className="mobile-menu-overlay" onClick={() => setMobileMenuOpen(false)}>
             <div className="mobile-menu-panel" onClick={(e) => e.stopPropagation()}>
@@ -4062,6 +4282,7 @@ const HomeUI = (
             onDeleteArticle={handleDeleteArticle}
             currentUser={username}
             currentAvatar={avatar}
+            currentDeviceId={deviceId}
         />
       ) : (
         <>
