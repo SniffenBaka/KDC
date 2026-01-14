@@ -9,6 +9,7 @@ import PollComponent from '../components/PollComponent';
 import QuoteBlock from '../components/QuoteBlock';
 import InfoCard, { InfoCardGrid } from '../components/InfoCard';
 import Timeline from '../components/Timeline';
+import FadeInSection from '../components/FadeInSection';
 
 const BRAND = {
   primary: '#9333EA',
@@ -131,7 +132,7 @@ const Showcase = () => {
         </button>
 
         {/* Header */}
-        
+        <FadeInSection delay={0}>
           <div style={{ textAlign: 'center', marginBottom: '80px' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
               <Sparkles size={32} color={BRAND.primaryHover} />
@@ -159,10 +160,10 @@ const Showcase = () => {
               Khám phá các định dạng nội dung đa dạng và sáng tạo của Eight Ducks
             </p>
           </div>
-        
+        </FadeInSection>
 
         {/* Section 1: Image Carousel */}
-        
+        <FadeInSection delay={100}>
           <section style={{ marginBottom: '100px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '16px' }}>
               <div style={{ padding: '8px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)' }}><Image size={24} color="#a855f7" /></div>
@@ -178,10 +179,10 @@ const Showcase = () => {
             </p>
             <ImageCarousel images={sampleImages} captions={sampleCaptions} />
           </section>
-        
+        </FadeInSection>
 
         {/* Section 2: Poll */}
-        
+        <FadeInSection delay={100}>
           <section style={{ marginBottom: '100px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '16px' }}>
               <div style={{ padding: '8px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)' }}><BarChart2 size={24} color="#a855f7" /></div>
@@ -201,10 +202,10 @@ const Showcase = () => {
               pollId="showcase-poll-1"
             />
           </section>
-        
+        </FadeInSection>
 
         {/* Section 3: Quote Blocks */}
-        
+        <FadeInSection delay={100}>
           <section style={{ marginBottom: '100px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '16px' }}>
                <div style={{ padding: '8px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)' }}><Quote size={24} color="#a855f7" /></div>
@@ -233,10 +234,10 @@ const Showcase = () => {
               variant="bordered"
             />
           </section>
-        
+        </FadeInSection>
 
         {/* Section 4: Info Cards */}
-        
+        <FadeInSection delay={100}>
           <section style={{ marginBottom: '100px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '16px' }}>
                <div style={{ padding: '8px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)' }}><Activity size={24} color="#a855f7" /></div>
@@ -279,10 +280,10 @@ const Showcase = () => {
               />
             </InfoCardGrid>
           </section>
-        
+        </FadeInSection>
 
         {/* Section 5: Timeline */}
-        
+        <FadeInSection delay={100}>
           <section style={{ marginBottom: '100px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '16px' }}>
                <div style={{ padding: '8px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)' }}><Calendar size={24} color="#a855f7" /></div>
@@ -298,10 +299,10 @@ const Showcase = () => {
             </p>
             <Timeline events={timelineEvents} />
           </section>
-        
+        </FadeInSection>
 
         {/* Footer CTA */}
-        
+        <FadeInSection delay={100}>
         <div style={{ 
           textAlign: 'center', 
           marginTop: '80px',
@@ -344,7 +345,7 @@ const Showcase = () => {
             </button>
           </div>
         </div>
-        
+        </FadeInSection>
         
 
         {/* Footer Credit */}
@@ -368,6 +369,18 @@ const Showcase = () => {
 
       {/* Mobile Responsive Styles */}
       <style>{`
+        /* Reveal animation styles */
+        .reveal-section {
+          opacity: 0;
+          transform: translateY(30px);
+          transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+          will-change: opacity, transform;
+        }
+        .reveal-section.is-visible {
+          opacity: 1;
+          transform: translateY(0);
+        }
+
         @media (max-width: 768px) {
           .showcase-container {
             padding: 100px 20px 40px !important;

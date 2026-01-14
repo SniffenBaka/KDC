@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import ReactBitsBackground from '../components/ReactBitsBackground';
 import LightRays from '../components/LightRays';
 import GradientText from '../components/GradientText';
+import FadeInSection from '../components/FadeInSection';
 
 const BRAND = {
   primary: '#9333EA',
@@ -67,7 +68,8 @@ const About = () => {
         </button>
 
         {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: '60px' }}>
+        <FadeInSection delay={0}>
+          <div style={{ textAlign: 'center', marginBottom: '60px' }}>
           <h1 style={{ 
             fontSize: 'clamp(40px, 6vw, 56px)', 
             fontWeight: '700', 
@@ -89,12 +91,14 @@ const About = () => {
             Eight Ducks - Many Stories
           </p>
         </div>
+        </FadeInSection>
 
         {/* Content Cards */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
           
           {/* Card 1: Chúng tôi là ai */}
-          <div style={{
+          <FadeInSection delay={100}>
+            <div style={{
             background: 'rgba(255, 255, 255, 0.02)',
             backdropFilter: 'blur(10px)',
             border: '1px solid rgba(255, 255, 255, 0.08)',
@@ -124,9 +128,11 @@ const About = () => {
               Tụi mình tạo ra website này để lưu giữ những khoảnh khắc đẹp nhất của tuổi học trò - những cảm xúc chân thật, những ký ức không thể quên.
             </p>
           </div>
+          </FadeInSection>
 
           {/* Card 2: Nội dung từ đâu */}
-          <div style={{
+          <FadeInSection delay={150}>
+            <div style={{
             background: 'rgba(255, 255, 255, 0.02)',
             backdropFilter: 'blur(10px)',
             border: '1px solid rgba(255, 255, 255, 0.08)',
@@ -161,9 +167,11 @@ const About = () => {
               </li>
             </ul>
           </div>
+          </FadeInSection>
 
           {/* Card 3: Disclaimer */}
-          <div style={{
+          <FadeInSection delay={200}>
+            <div style={{
             background: 'rgba(147, 51, 234, 0.05)',
             backdropFilter: 'blur(10px)',
             border: `1px solid ${BRAND.border}`,
@@ -193,9 +201,11 @@ const About = () => {
               Nhân vật và tình tiết chỉ là hư cấu, nhằm mục đích giải trí và gợi cảm xúc. Mọi sự trùng hợp đều là ngẫu nhiên.
             </p>
           </div>
+          </FadeInSection>
 
           {/* Card 4: Mục đích */}
-          <div style={{
+          <FadeInSection delay={250}>
+            <div style={{
             background: 'rgba(255, 255, 255, 0.02)',
             backdropFilter: 'blur(10px)',
             border: '1px solid rgba(255, 255, 255, 0.08)',
@@ -227,11 +237,13 @@ const About = () => {
               </span>
             </p>
           </div>
+          </FadeInSection>
 
         </div>
 
         {/* Footer CTA */}
-        <div style={{ 
+        <FadeInSection delay={300}>
+          <div style={{ 
           textAlign: 'center', 
           marginTop: '60px',
           padding: '40px 24px',
@@ -262,6 +274,7 @@ const About = () => {
             Viết câu chuyện của bạn
           </button>
         </div>
+        </FadeInSection>
 
         {/* Footer Credit */}
         <footer style={{ 
@@ -278,6 +291,20 @@ const About = () => {
           Built by <img src="https://i.ibb.co/TBNykxRH/sniffen-terminal-window-v7.gif" alt="Sniffen" style={{ height: '40px', borderRadius: '4px' }} />
         </footer>
       </div>
+
+      {/* Reveal Animation Styles */}
+      <style>{`
+        .reveal-section {
+          opacity: 0;
+          transform: translateY(30px);
+          transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+          will-change: opacity, transform;
+        }
+        .reveal-section.is-visible {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      `}</style>
     </div>
   );
 };
