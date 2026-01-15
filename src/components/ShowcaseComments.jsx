@@ -57,7 +57,6 @@ const ShowcaseComments = () => {
   return (
     <div style={{
       width: '100%',
-      overflow: 'hidden',
       position: 'relative'
     }}>
       {/* Grid of comment cards */}
