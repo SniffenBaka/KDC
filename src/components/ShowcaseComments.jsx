@@ -1,53 +1,54 @@
 import React from 'react';
 import { motion } from 'motion/react';
+import { User, UserCircle, Smile, Star, Zap, Sparkles } from 'lucide-react';
 
 const ShowcaseComments = () => {
   const comments = [
     {
       id: 1,
       username: '@minhduc',
-      initials: 'MD',
-      gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      icon: User,
+      gradient: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)', // Dark indigo
       comment: 'Website này xịn quá! Nhìn vào là thấy tâm huyết của team luôn.',
       role: 'Học sinh 11A7'
     },
     {
       id: 2,
       username: '@thuytrang',
-      initials: 'TT',
-      gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+      icon: Smile,
+      gradient: 'linear-gradient(135deg, #831843 0%, #be185d 100%)', // Dark pink
       comment: 'Mỗi lần vào đọc lại những bài viết là lại nhớ đến những kỉ niệm đẹp.',
       role: 'Học sinh 11A7'
     },
     {
       id: 3,
       username: '@quanganh',
-      initials: 'QA',
-      gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+      icon: Star,
+      gradient: 'linear-gradient(135deg, #164e63 0%, #0e7490 100%)', // Dark cyan
       comment: 'Design đẹp mắt, nội dung chất lượng. Eight Ducks xứng đáng 10 điểm!',
       role: 'Học sinh 11A7'
     },
     {
       id: 4,
       username: '@phuonganh',
-      initials: 'PA',
-      gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+      icon: Sparkles,
+      gradient: 'linear-gradient(135deg, #065f46 0%, #059669 100%)', // Dark emerald
       comment: 'Cảm ơn team đã tạo ra một nơi lưu giữ những khoảnh khắc tuổi học trò.',
       role: 'Học sinh 11A7'
     },
     {
       id: 5,
       username: '@hoanglong',
-      initials: 'HL',
-      gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+      icon: Zap,
+      gradient: 'linear-gradient(135deg, #92400e 0%, #b45309 100%)', // Dark amber
       comment: 'Chưa thấy web nào của học sinh mà chất lượng như thế này.',
       role: 'Học sinh khối 11'
     },
     {
       id: 6,
       username: '@kimchi',
-      initials: 'KC',
-      gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+      icon: UserCircle,
+      gradient: 'linear-gradient(135deg, #4c1d95 0%, #6b21a8 100%)', // Dark purple
       comment: 'Animations mượt mà, UI/UX đỉnh cao. Impressed!',
       role: 'Học sinh khối 11'
     }
@@ -128,13 +129,10 @@ const ShowcaseComments = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '16px',
-                  fontWeight: '700',
-                  color: '#ffffff',
                   border: '2px solid rgba(255, 255, 255, 0.2)',
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
                 }}>
-                  {comment.initials}
+                  <comment.icon size={24} color="#ffffff" strokeWidth={2.5} />
                 </div>
                 <div>
                   <div style={{
