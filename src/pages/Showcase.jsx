@@ -260,20 +260,20 @@ const Showcase = () => {
               />
               <InfoCard
                 icon="heart"
-                number={30}
+                number={100}
                 suffix="+"
                 label="Lượt yêu thích"
                 color="#ec4899"
               />
               <InfoCard
                 icon="sparkles"
-                number={5}
+                number={6}
                 label="Bài viết"
                 color="#a855f7"
               />
               <InfoCard
                 icon="trending"
-                number={1000}
+                number={1600}
                 suffix="+"
                 label="Lượt xem"
                 color="#10b981"
