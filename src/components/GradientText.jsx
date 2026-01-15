@@ -6,7 +6,7 @@ import './GradientText.css';
 const COLOR_PRESETS = {
   default: ['#5227FF', '#FF9FFC', '#B19EEF'],
   header: ['#6D28D9', '#8B5CF6', '#A78BFA', '#7C3AED'], // Darker purple for section headers
-  number: ['#8B5CF6', '#C084FC', '#E9D5FF', '#A78BFA'], // Vibrant gradient for numbers
+  number: ['#5B21B6', '#7C3AED', '#9333EA', '#6B21A8'], // Dark bold purple for numbers
   main: ['#7B3FE4', '#A855F7', '#CBA7FF'] // Original main header
 };
 

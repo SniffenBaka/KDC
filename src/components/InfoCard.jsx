@@ -146,12 +146,13 @@ const InfoCard = ({
         {/* Number with Gradient */}
         <GradientText preset="number" animationSpeed={3}>
           <div style={{
-            fontSize: '48px',
+            fontSize: '52px',
             fontWeight: '900',
-            letterSpacing: '-2px',
-            lineHeight: '1.1',
-            marginBottom: '8px',
-            display: 'inline-block'
+            letterSpacing: '-3px',
+            lineHeight: '1',
+            marginBottom: '12px',
+            display: 'inline-block',
+            fontFamily: '"Space Grotesk", "Inter", system-ui, -apple-system, sans-serif'
           }}>
             {displayNumber}{suffix}
           </div>
