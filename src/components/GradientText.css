@@ -1,5 +1,6 @@
 .animated-gradient-text {
   display: inline-block;
+  overflow: visible;
 }
 
 .text-content {
@@ -7,4 +8,5 @@
   -webkit-background-clip: text;
   color: transparent;
   will-change: background-position;
+  overflow: visible;
 }

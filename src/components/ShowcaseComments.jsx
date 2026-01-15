@@ -93,8 +93,6 @@ const ShowcaseComments = () => {
                 borderRadius: '16px',
                 padding: '24px',
                 position: 'relative',
-                overflow: 'hidden',
-                cursor: 'default',
                 transition: 'border-color 0.3s, background 0.3s'
               }}
               onMouseEnter={(e) => {
