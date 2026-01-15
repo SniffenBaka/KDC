@@ -149,8 +149,10 @@ const InfoCard = ({
             fontSize: '52px',
             fontWeight: '900',
             letterSpacing: '-3px',
-            lineHeight: '1',
+            lineHeight: '1.15',
             marginBottom: '12px',
+            paddingTop: '4px',
+            paddingBottom: '4px',
             display: 'inline-block',
             fontFamily: '"Space Grotesk", "Inter", system-ui, -apple-system, sans-serif'
           }}>

@@ -68,38 +68,44 @@ const ShowcaseComments = () => {
         margin: '0 auto',
         maxWidth: '100%'
       }}>
-        {comments.map((comment, index) => (
-          <motion.div
-            key={comment.id}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-50px" }}
-            transition={{ delay: index * 0.1, duration: 0.5 }}
-            whileHover={{ 
-              y: -5,
-              transition: { duration: 0.2 }
-            }}
-            style={{
-              background: 'rgba(10, 10, 10, 0.6)',
-              backdropFilter: 'blur(10px)',
-              WebkitBackdropFilter: 'blur(10px)',
-              border: '1px solid rgba(139, 92, 246, 0.2)',
-              borderRadius: '16px',
-              padding: '24px',
-              position: 'relative',
-              overflow: 'hidden',
-              cursor: 'default',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.4)';
-              e.currentTarget.style.background = 'rgba(15, 15, 15, 0.7)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.2)';
-              e.currentTarget.style.background = 'rgba(10, 10, 10, 0.6)';
-            }}
-          >
+        {comments.map((comment, index) => {
+          const MotionDiv = motion.div;
+          return (
+            <MotionDiv
+              key={comment.id}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ 
+                delay: index * 0.1, 
+                duration: 0.6,
+                ease: [0.25, 0.1, 0.25, 1]
+              }}
+              whileHover={{ 
+                y: -6,
+                transition: { duration: 0.3 }
+              }}
+              style={{
+                background: 'rgba(10, 10, 10, 0.6)',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
+                border: '1px solid rgba(139, 92, 246, 0.2)',
+                borderRadius: '16px',
+                padding: '24px',
+                position: 'relative',
+                overflow: 'hidden',
+                cursor: 'default',
+                transition: 'border-color 0.3s, background 0.3s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.4)';
+                e.currentTarget.style.background = 'rgba(15, 15, 15, 0.7)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.2)';
+                e.currentTarget.style.background = 'rgba(10, 10, 10, 0.6)';
+              }}
+            >
             {/* Subtle gradient backdrop */}
             <div style={{
               position: 'absolute',
@@ -164,8 +170,9 @@ const ShowcaseComments = () => {
                 "{comment.comment}"
               </p>
             </div>
-          </motion.div>
-        ))}
+          </MotionDiv>
+        );
+        })}
       </div>
 
       {/* Responsive styles */}
