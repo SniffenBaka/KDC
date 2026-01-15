@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Sparkles, Image, BarChart2, Quote, Activity, Calendar } from 'lucide-react';
+import { ArrowLeft, Sparkles, Image, BarChart2, Quote, Activity, Calendar, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ReactBitsBackground from '../components/ReactBitsBackground';
 import LightRays from '../components/LightRays';
@@ -10,6 +10,7 @@ import QuoteBlock from '../components/QuoteBlock';
 import InfoCard, { InfoCardGrid } from '../components/InfoCard';
 import Timeline from '../components/Timeline';
 import FadeInSection from '../components/FadeInSection';
+import ShowcaseComments from '../components/ShowcaseComments';
 
 const BRAND = {
   primary: '#9333EA',
@@ -167,7 +168,9 @@ const Showcase = () => {
           <section style={{ marginBottom: '100px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '16px' }}>
               <div style={{ padding: '8px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)' }}><Image size={24} color="#a855f7" /></div>
-              <h2 style={{ fontSize: '28px', fontWeight: '700', color: '#f9fafb', margin: 0 }}>Bộ sưu tập hình ảnh</h2>
+              <h2 style={{ fontSize: '28px', fontWeight: '700', margin: 0 }}>
+                <GradientText preset="header" animationSpeed={3}>Bộ sưu tập hình ảnh</GradientText>
+              </h2>
             </div>
             <p style={{
               fontSize: '16px',
@@ -186,7 +189,9 @@ const Showcase = () => {
           <section style={{ marginBottom: '100px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '16px' }}>
               <div style={{ padding: '8px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)' }}><BarChart2 size={24} color="#a855f7" /></div>
-              <h2 style={{ fontSize: '28px', fontWeight: '700', color: '#f9fafb', margin: 0 }}>Khảo sát tương tác</h2>
+              <h2 style={{ fontSize: '28px', fontWeight: '700', margin: 0 }}>
+                <GradientText preset="header" animationSpeed={3}>Khảo sát tương tác</GradientText>
+              </h2>
             </div>
             <p style={{
               fontSize: '16px',
@@ -209,7 +214,9 @@ const Showcase = () => {
           <section style={{ marginBottom: '100px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '16px' }}>
                <div style={{ padding: '8px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)' }}><Quote size={24} color="#a855f7" /></div>
-               <h2 style={{ fontSize: '28px', fontWeight: '700', color: '#f9fafb', margin: 0 }}>Trích dẫn nổi bật</h2>
+               <h2 style={{ fontSize: '28px', fontWeight: '700', margin: 0 }}>
+                 <GradientText preset="header" animationSpeed={3}>Trích dẫn nổi bật</GradientText>
+               </h2>
             </div>
             <p style={{
               fontSize: '16px',
@@ -241,7 +248,9 @@ const Showcase = () => {
           <section style={{ marginBottom: '100px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '16px' }}>
                <div style={{ padding: '8px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)' }}><Activity size={24} color="#a855f7" /></div>
-               <h2 style={{ fontSize: '28px', fontWeight: '700', color: '#f9fafb', margin: 0 }}>Thống kê & Thành tựu</h2>
+               <h2 style={{ fontSize: '28px', fontWeight: '700', margin: 0 }}>
+                 <GradientText preset="header" animationSpeed={3}>Thống kê & Thành tựu</GradientText>
+               </h2>
             </div>
             <p style={{
               fontSize: '16px',
@@ -287,7 +296,9 @@ const Showcase = () => {
           <section style={{ marginBottom: '100px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '16px' }}>
                <div style={{ padding: '8px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)' }}><Calendar size={24} color="#a855f7" /></div>
-               <h2 style={{ fontSize: '28px', fontWeight: '700', color: '#f9fafb', margin: 0 }}>Dòng thời gian</h2>
+               <h2 style={{ fontSize: '28px', fontWeight: '700', margin: 0 }}>
+                 <GradientText preset="header" animationSpeed={3}>Dòng thời gian</GradientText>
+               </h2>
             </div>
             <p style={{
               fontSize: '16px',
@@ -298,6 +309,27 @@ const Showcase = () => {
               Kể chuyện theo trình tự thời gian với bố cục đẹp mắt
             </p>
             <Timeline events={timelineEvents} />
+          </section>
+        </FadeInSection>
+
+        {/* Section 6: Comments/Testimonials */}
+        <FadeInSection delay={100}>
+          <section style={{ marginBottom: '100px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '16px' }}>
+               <div style={{ padding: '8px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)' }}><MessageCircle size={24} color="#a855f7" /></div>
+               <h2 style={{ fontSize: '28px', fontWeight: '700', margin: 0 }}>
+                 <GradientText preset="header" animationSpeed={3}>Reviews từ cộng đồng</GradientText>
+               </h2>
+            </div>
+            <p style={{
+              fontSize: '16px',
+              color: '#9ca3af',
+              marginBottom: '40px',
+              textAlign: 'center',
+            }}>
+              Những phản hồi tích cực từ bạn bè và cộng đồng học sinh
+            </p>
+            <ShowcaseComments />
           </section>
         </FadeInSection>
 

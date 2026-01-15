@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { TrendingUp, Users, Heart, Sparkles } from 'lucide-react';
+import GradientText from './GradientText';
 
 const BRAND = {
   primary: '#9333EA',
@@ -142,21 +143,19 @@ const InfoCard = ({
       </div>
 
       <div style={{ position: 'relative', zIndex: 1 }}>
-        {/* Number */}
-        <div style={{
-          fontSize: '48px',
-          fontWeight: '900',
-          background: 'linear-gradient(135deg, #c084fc 0%, #a855f7 50%, #9333ea 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
-          letterSpacing: '-2px',
-          lineHeight: '1.1',
-          marginBottom: '8px',
-          display: 'inline-block'
-        }}>
-          {displayNumber}{suffix}
-        </div>
+        {/* Number with Gradient */}
+        <GradientText preset="number" animationSpeed={3}>
+          <div style={{
+            fontSize: '48px',
+            fontWeight: '900',
+            letterSpacing: '-2px',
+            lineHeight: '1.1',
+            marginBottom: '8px',
+            display: 'inline-block'
+          }}>
+            {displayNumber}{suffix}
+          </div>
+        </GradientText>
 
         {/* Label */}
         <div style={{

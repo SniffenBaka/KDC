@@ -2,16 +2,27 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, useMotionValue, useAnimationFrame, useTransform } from 'motion/react';
 import './GradientText.css';
 
+// Color presets
+const COLOR_PRESETS = {
+  default: ['#5227FF', '#FF9FFC', '#B19EEF'],
+  header: ['#6D28D9', '#8B5CF6', '#A78BFA', '#7C3AED'], // Darker purple for section headers
+  number: ['#8B5CF6', '#C084FC', '#E9D5FF', '#A78BFA'], // Vibrant gradient for numbers
+  main: ['#7B3FE4', '#A855F7', '#CBA7FF'] // Original main header
+};
+
 export default function GradientText({
   children,
   className = '',
-  colors = ['#5227FF', '#FF9FFC', '#B19EEF'],
+  colors = null,
+  preset = 'default', // New preset prop
   animationSpeed = 8,
   showBorder = false,
   direction = 'horizontal',
   pauseOnHover = false,
   yoyo = true
 }) {
+  // Use preset if colors not explicitly provided
+  const finalColors = colors || COLOR_PRESETS[preset] || COLOR_PRESETS.default;
   const [isPaused, setIsPaused] = useState(false);
   const progress = useMotionValue(0);
   const elapsedRef = useRef(0);
@@ -66,7 +77,7 @@ export default function GradientText({
       ? 'to bottom'
       : 'to bottom right';
 
-  const gradientColors = [...colors, colors[0]].join(', ');
+  const gradientColors = [...finalColors, finalColors[0]].join(', ');
 
   const gradientStyle = {
     backgroundImage: `linear-gradient(${gradientAngle}, ${gradientColors})`,
